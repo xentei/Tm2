@@ -1,150 +1,179 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AEP OPS CONTROL | v12 MULTI-STAND</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <title>AEP OPS CONTROL | v27 LOGIC FIX</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #050505;
-            --panel-bg: #0f0f0f;
-            --border-color: #222;
+            --panel-bg: #101010;
+            --border-color: #333;
             
             /* Colores */
             --accent-dep: #ff6b00; 
             --accent-arr: #00f0ff; 
             --alert-color: #ff003c; 
+            --ok-color: #00ff88;
+            --pre-color: #ccff00; /* Verde Lima */
             --highlight-border: #ffd700; 
             
-            --auto-rule-bg: rgba(120, 80, 255, 0.08);
-            --auto-rule-border: rgba(120, 80, 255, 0.6);
+            /* Colores de Reglas */
+            --auto-rule-violet-bg: rgba(208, 0, 255, 0.15);
+            --auto-rule-violet-border: #d000ff;
+            --auto-rule-red-bg: rgba(255, 60, 60, 0.15);
+            --auto-rule-red-border: #ff3c3c;
             
-            --text-main: #e0e0e0;
-            --text-dim: #555;
+            --text-main: #ffffff;
+            --text-dim: #888;
         }
 
         * { box-sizing: border-box; }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            height: 100%; min-height: 100vh;
-            display: flex; flex-direction: column; overflow-x: hidden;
-        }
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
         /* HEADER */
-        header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #080808; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
-        .brand { font-family: 'JetBrains Mono'; font-weight: 800; font-size: 18px; text-transform: uppercase; color: #fff; letter-spacing: 1px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 8px 20px; background: #000; border-bottom: 2px solid var(--border-color); flex-shrink: 0; }
+        
+        .brand { font-family: 'JetBrains Mono'; font-weight: 900; font-size: 20px; text-transform: uppercase; color: #fff; letter-spacing: 1px; }
         .brand span { color: var(--accent-dep); }
-        .clock { font-family: 'JetBrains Mono'; font-size: 18px; font-weight: 700; color: #888; }
 
-        /* --- MAPA DE PLATAFORMA --- */
-        #apron-container { padding: 10px 15px; border-bottom: 1px solid var(--border-color); background: #0a0a0a; flex-shrink: 0; }
-        .apron-header { font-size: 10px; color: #444; margin-bottom: 8px; text-transform: uppercase; font-weight: bold; font-family: 'JetBrains Mono'; letter-spacing: 2px; }
+        /* PANEL DE ESTADÍSTICAS */
+        .status-board {
+            display: flex; gap: 20px; align-items: center;
+            background: #111; border: 1px solid #333;
+            padding: 5px 15px; border-radius: 4px;
+        }
+        .stat-group { display: flex; gap: 15px; align-items: center; }
+        .stat-item { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono'; font-size: 10px; }
+        .stat-label { color: #888; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+        .stat-value { font-weight: 900; font-size: 14px; padding: 0 2px; }
+        
+        .divider { width: 1px; height: 18px; background: #444; }
+
+        /* Colores dinámicos */
+        .val-ok { color: var(--ok-color); text-shadow: 0 0 5px rgba(0, 255, 136, 0.3); }
+        .val-alert { color: var(--alert-color); animation: flash-text 1s infinite; text-shadow: 0 0 8px var(--alert-color); }
+        .val-pre { color: var(--pre-color); text-shadow: 0 0 5px rgba(204, 255, 0, 0.4); }
+
+        .clock { font-family: 'JetBrains Mono'; font-size: 22px; font-weight: 700; color: #fff; }
+
+        /* --- PLATAFORMA --- */
+        #apron-container { padding: 15px 20px; border-bottom: 1px solid var(--border-color); background: #080808; flex-shrink: 0; }
+        .apron-header { font-size: 11px; color: #666; margin-bottom: 10px; text-transform: uppercase; font-weight: 800; font-family: 'JetBrains Mono'; letter-spacing: 1px; }
         .apron-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); gap: 8px; }
 
-        .stand { 
-            height: 40px; background: #111; border: 1px solid #222; border-radius: 4px; position: relative; 
-            display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; cursor: default;
-        }
-        
-        .stand-num { 
-            position: absolute; top: 2px; left: 4px; 
-            font-size: 10px; color: #fff; font-family: 'JetBrains Mono'; font-weight: 900; 
-            text-shadow: 0 1px 2px #000; opacity: 0.9; z-index: 5;
-        }
-        
-        .stand-flight { font-family: 'JetBrains Mono'; font-weight: 700; font-size: 11px; color: #fff; z-index: 2; letter-spacing: -0.5px; }
+        .stand { height: 40px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; position: relative; display: flex; align-items: center; justify-content: center; transition: all 0.2s; cursor: default; }
+        .stand-num { position: absolute; top: 1px; left: 3px; font-size: 11px; color: #fff; font-family: 'JetBrains Mono'; font-weight: 900; text-shadow: 0 0 2px #000, 0 0 4px #000; z-index: 5; }
+        .stand-flight { font-family: 'JetBrains Mono'; font-weight: 700; font-size: 12px; color: #fff; z-index: 2; letter-spacing: -0.5px; }
+        .multi-indicator { position: absolute; bottom: 1px; right: 2px; font-size: 9px; color: #fff; font-weight: 900; letter-spacing: -1px; }
 
-        /* Indicador de Múltiples Vuelos */
-        .multi-indicator {
-            position: absolute; bottom: 2px; right: 2px;
-            font-size: 8px; color: #fff; opacity: 0.8; letter-spacing: -1px;
-        }
-
-        /* Estados de Ocupación */
-        .stand.occupied-dep { border-color: var(--accent-dep); background: rgba(255, 107, 0, 0.1); cursor: pointer; }
+        .stand.occupied-dep { border-color: var(--accent-dep); background: rgba(255, 107, 0, 0.15); box-shadow: inset 0 0 10px rgba(255, 107, 0, 0.1); cursor: pointer; }
         .stand.occupied-dep .stand-flight { color: var(--accent-dep); }
-        
-        .stand.occupied-arr { border-color: var(--accent-arr); background: rgba(0, 240, 255, 0.1); cursor: pointer; }
+        .stand.occupied-arr { border-color: var(--accent-arr); background: rgba(0, 240, 255, 0.15); box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1); cursor: pointer; }
         .stand.occupied-arr .stand-flight { color: var(--accent-arr); }
-        
-        /* Zona Caliente */
-        .stand.hot-zone { border-bottom: 2px solid #444; }
-        .stand.hot-zone.occupied-dep { border-bottom-color: var(--accent-dep); }
-        .stand.hot-zone.occupied-arr { border-bottom-color: var(--accent-arr); }
-
-        /* ESTADO PINNED */
-        .stand.is-pinned {
-            border: 2px solid #fff !important;
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.15) !important;
-            transform: scale(1.05); z-index: 10;
-        }
-        .stand.is-pinned .stand-flight { color: #fff !important; text-shadow: 0 0 5px #fff; }
+        .stand.is-pinned { border: 2px solid var(--highlight-border) !important; background: rgba(255, 215, 0, 0.2) !important; transform: scale(1.05); z-index: 10; box-shadow: 0 0 15px rgba(255,215,0,0.3); }
+        .stand.is-pinned .stand-flight { color: #fff !important; }
+        .stand.hot-zone { border-bottom: 3px solid var(--alert-color); }
 
         /* WATCHLIST */
-        #watchlist-section { display: none; padding: 10px 15px 0 15px; flex-shrink: 0; border-bottom: 1px solid #222; background: rgba(255, 215, 0, 0.01); }
-        .watchlist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-bottom: 10px; }
-        .watchlist-col { border: 1px solid rgba(255, 215, 0, 0.3); background: rgba(255,215,0,0.02); border-radius: 4px; }
-        .watchlist-col.empty { visibility: hidden; display: none; }
-        .watchlist-header { padding: 4px 8px; font-size: 10px; color: var(--highlight-border); font-weight: bold; font-family: 'JetBrains Mono'; text-transform: uppercase; border-bottom: 1px solid rgba(255, 215, 0, 0.1); }
+        #watchlist-section { display: none; padding: 0 20px; margin-top: 15px; flex-shrink: 0; }
+        .watchlist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px; background: rgba(255,215,0,0.05); border: 1px solid var(--highlight-border); border-radius: 4px; }
+        .watchlist-col.empty { display: none; }
+        .watchlist-header { font-size: 11px; color: var(--highlight-border); font-weight: 800; text-transform: uppercase; margin-bottom: 5px; font-family: 'JetBrains Mono'; }
 
-        /* PANELES */
-        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 15px; flex: 1; min-height: 0; }
-        .panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; height: 100%; }
-        .panel-header { padding: 10px 12px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; background: #111; flex-shrink: 0; }
-        .ph-dep { color: var(--accent-dep); border-top: 2px solid var(--accent-dep); }
-        .ph-arr { color: var(--accent-arr); border-top: 2px solid var(--accent-arr); }
-        .table-container { flex: 1; overflow-y: auto; overflow-x: auto; }
-        
-        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 600px; }
-        thead { position: sticky; top: 0; background-color: #111; z-index: 10; border-bottom: 1px solid #222; }
-        th { text-align: left; padding: 8px 10px; color: #666; font-size: 10px; text-transform: uppercase; font-weight: 600; font-family: 'Inter'; white-space: nowrap; }
-        td { padding: 6px 10px; vertical-align: middle; border-bottom: 1px solid #1a1a1a; white-space: nowrap; }
-        tbody tr { cursor: pointer; transition: background 0.1s; }
-        tbody tr:hover { background-color: #1a1a1a; }
+        /* LAYOUT */
+        .content-split { flex: 1; display: flex; overflow: hidden; padding: 15px 20px; gap: 20px; }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 3; min-width: 650px; height: 100%; min-height: 0; }
+        #map-container { flex: 1; border: 1px solid var(--border-color); background: #000; border-radius: 4px; overflow: hidden; min-width: 250px; }
+        .panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 4px; display: flex; flex-direction: column; overflow: hidden; height: 100%; }
+        .panel-header { padding: 12px; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; background: #151515; }
+        .ph-dep { color: var(--accent-dep); border-top: 3px solid var(--accent-dep); }
+        .ph-arr { color: var(--accent-arr); border-top: 3px solid var(--accent-arr); }
+        .table-container { flex: 1; overflow-y: auto; }
+        #radar-frame { width: 100%; height: 100%; border: none; }
 
-        /* ESTADOS DE FILA */
-        .row-selected { background-color: rgba(255, 215, 0, 0.05) !important; border-left: 2px solid var(--highlight-border) !important; }
-        .row-selected td { color: #fff; }
-        .row-selected-alert { background-color: rgba(255, 0, 60, 0.2) !important; border-left: 2px solid var(--alert-color) !important; }
-        .row-auto-highlight { background-color: var(--auto-rule-bg); border-left: 2px solid var(--auto-rule-border); }
-        .row-auto-highlight td { color: #d8b4fe; font-weight: 600; }
+        /* TABLAS */
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead { position: sticky; top: 0; background-color: #151515; z-index: 10; border-bottom: 1px solid #333; }
+        th { text-align: left; padding: 10px; color: #888; font-size: 11px; text-transform: uppercase; font-weight: 700; white-space: nowrap; }
+        td { padding: 8px 10px; vertical-align: middle; border-bottom: 1px solid #222; white-space: nowrap; color: #eee; }
+        tbody tr { transition: background 0.1s; }
+        tbody tr:hover { background-color: #222 !important; }
 
-        /* DATA STYLES */
+        /* FILAS */
+        .row-selected { background-color: rgba(255, 215, 0, 0.15) !important; border-left: 4px solid var(--highlight-border) !important; }
+        .row-selected-alert { background-color: rgba(255, 0, 60, 0.25) !important; border-left: 4px solid var(--alert-color) !important; }
+        .row-auto-violet { background-color: var(--auto-rule-violet-bg); border-left: 4px solid var(--auto-rule-violet-border); }
+        .row-auto-violet td { color: #e080ff; font-weight: 700; text-shadow: 0 0 5px rgba(208, 0, 255, 0.4); }
+        .row-auto-red { background-color: var(--auto-rule-red-bg); border-left: 4px solid var(--auto-rule-red-border); }
+        .row-auto-red td { color: #ff9999; font-weight: 700; }
+
+        /* DATA */
         .mono { font-family: 'JetBrains Mono', monospace; }
         .bold { font-weight: 700; }
-        .tail-number { color: #666; font-size: 11px; }
-        .time-est { color: #ff9800; font-weight: bold; }
-        .time-real { color: #00e676; font-weight: bold; }
-        
-        .badge { display: inline-flex; align-items: center; justify-content: center; padding: 2px 5px; border-radius: 3px; font-weight: 700; font-size: 11px; min-width: 25px; font-family: 'JetBrains Mono'; }
-        .b-pos { background: #1a1a1a; color: #ffd700; border: 1px solid #333; }
-        .b-gate { color: var(--accent-arr); }
-        .b-belt { color: #fff; }
-        
-        .st-ok { color: #4caf50; }
+        .tail-number { color: #aaa; font-size: 12px; border: 1px solid #444; padding: 1px 4px; border-radius: 2px; }
+        .time-est { color: #ffae00; font-weight: bold; }
+        .time-real { color: #00ff88; font-weight: bold; }
+        .badge { display: inline-flex; align-items: center; justify-content: center; padding: 2px 6px; border-radius: 3px; font-weight: 700; font-size: 11px; min-width: 30px; font-family: 'JetBrains Mono'; }
+        .b-pos { background: #222; color: #ffd700; border: 1px solid #444; }
+        .b-gate { color: var(--accent-arr); background: rgba(0, 240, 255, 0.1); }
+        .b-belt { color: #fff; background: #333; }
 
-        @keyframes flash-anim { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .st-pre { color: #00ff00; font-weight: 900; animation: flash-anim 0.8s infinite; text-shadow: 0 0 5px rgba(0, 255, 0, 0.6); border: 1px solid rgba(0, 255, 0, 0.4); padding: 1px 5px; border-radius: 4px; background: rgba(0, 255, 0, 0.15); }
-        .st-alert-flash { color: #ff003c; font-weight: 900; animation: flash-anim 0.8s infinite; text-shadow: 0 0 5px rgba(255, 0, 60, 0.6); border: 1px solid rgba(255, 0, 60, 0.4); padding: 1px 5px; border-radius: 4px; background: rgba(255, 0, 60, 0.15); }
+        @keyframes flash-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .st-pill { padding: 2px 6px; border-radius: 3px; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .st-ok { color: #00ff88; }
+        .st-pre { color: #ccff00; background: rgba(204, 255, 0, 0.15); border: 1px solid #ccff00; animation: flash-text 0.6s infinite; text-shadow: 0 0 8px #ccff00; }
+        .st-alert-flash { color: #ff003c; background: rgba(255, 0, 60, 0.15); border: 1px solid #ff003c; animation: flash-text 0.6s infinite; text-shadow: 0 0 8px #ff003c; }
 
-        footer { padding: 5px 20px; font-family: 'JetBrains Mono'; font-size: 9px; color: #444; background: #080808; border-top: 1px solid #111; display: flex; justify-content: space-between; flex-shrink: 0; }
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        footer { padding: 5px 20px; font-family: 'JetBrains Mono'; font-size: 10px; color: #666; background: #000; border-top: 1px solid #222; display: flex; justify-content: space-between; flex-shrink: 0; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #050505; }
-        ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
 
-        @media (max-width: 1024px) { body { height: auto; overflow-y: auto; } .main-grid { grid-template-columns: 1fr; height: auto; gap: 20px; padding: 10px; } .panel { height: 500px; } .watchlist-grid { grid-template-columns: 1fr; gap: 10px; } .watchlist-col.empty { display: none; } }
+        @media (max-width: 1200px) { .content-split { flex-direction: column; height: auto; overflow-y: auto; } .main-grid { flex: none; height: auto; } #map-container { flex: none; height: 350px; } }
     </style>
 </head>
 <body>
 
     <header>
         <div class="brand"><span>⚡</span> AEP OPS</div>
+
+        <div class="status-board">
+            <div class="stat-group">
+                <div class="stat-item">
+                    <span class="stat-label">PARTIDAS DEMORADAS:</span>
+                    <span class="stat-value" id="count-dep">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">ARRIBOS DEMORADOS:</span>
+                    <span class="stat-value" id="count-arr">0</span>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="stat-group">
+                <div class="stat-item">
+                    <span class="stat-label" style="color:var(--pre-color)">PRE NACIONAL:</span>
+                    <span class="stat-value val-pre" id="pre-cab">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label" style="color:var(--pre-color)">PRE INTER:</span>
+                    <span class="stat-value val-pre" id="pre-int">0</span>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="stat-group">
+                <div class="stat-item">
+                    <span class="stat-label" style="color:var(--alert-color)">POSICIONES CALIENTES:</span>
+                    <span class="stat-value val-alert" id="count-hot">0</span>
+                </div>
+            </div>
+        </div>
+
         <div class="clock" id="reloj">--:--:--</div>
     </header>
 
@@ -166,32 +195,34 @@
         </div>
     </div>
 
-    <div class="main-grid">
-        <div class="panel">
-            <div class="panel-header ph-dep">🛫 Partidas</div>
-            <div class="table-container">
-                <table id="tbl-partidas">
-                    <thead>
-                        <tr>
-                            <th>Vuelo</th><th>Dest</th><th>Prog</th><th>Est/Real</th><th>Mat</th><th>Pos</th><th>Pta</th><th>Est</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+    <div class="content-split">
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-header ph-dep"><span>🛫</span> Partidas</div>
+                <div class="table-container">
+                    <table id="tbl-partidas">
+                        <thead><tr><th>Vuelo</th><th>Dest</th><th>Prog</th><th>Est/Real</th><th>Mat</th><th>Pos</th><th>Pta</th><th>Est</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header ph-arr"><span>🛬</span> Arribos</div>
+                <div class="table-container">
+                    <table id="tbl-arribos">
+                        <thead><tr><th>Vuelo</th><th>Orig</th><th>Prog</th><th>Est/Real</th><th>Mat</th><th>Pos</th><th>Cin</th><th>Est</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
         </div>
-        <div class="panel">
-            <div class="panel-header ph-arr">🛬 Arribos</div>
-            <div class="table-container">
-                <table id="tbl-arribos">
-                    <thead>
-                        <tr>
-                            <th>Vuelo</th><th>Orig</th><th>Prog</th><th>Est/Real</th><th>Mat</th><th>Pos</th><th>Cin</th><th>Est</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
+
+        <div id="map-container">
+            <iframe 
+                id="radar-frame"
+                src="https://globe.adsbexchange.com/?lat=-34.57&lon=-58.42&zoom=9&hideSidebar&hideButtons&enableLabels" 
+                title="Radar AEP">
+            </iframe>
         </div>
     </div>
 
@@ -204,10 +235,8 @@
         const API_URL = '/datos-limpios';
         let pinnedFlights = new Set(); 
         let globalData = { partidas: [], arribos: [] };
-        
-        // Objeto para almacenar el estado de las posiciones (múltiples vuelos)
         let apronState = {}; 
-        let carouselIndex = 0; // Para rotar
+        let carouselIndex = 0;
 
         const POSICIONES_AEP = [
             "01", "02", "03", "04", "05", "06", "07", "08", "09", "10",
@@ -215,19 +244,20 @@
             "21", "26", "27", "28", "29", "30", "31", "32A", "32B", "33", "34"
         ];
 
+        const AEROPUERTOS_INT = ["GRU", "GIG", "MVD", "SCL", "LIM", "ASU", "BOG", "FLN", "PDP", "VVI", "CWB", "POA", "MIA", "MAD"];
+
         function initApronMap() {
             const grid = document.getElementById('apron-grid');
             grid.innerHTML = '';
             POSICIONES_AEP.forEach(pos => {
                 const div = document.createElement('div');
                 div.className = 'stand';
-                if(parseInt(pos) >= 1 && parseInt(pos) <= 9) div.classList.add('hot-zone');
+                const p = parseInt(pos);
+                if ((p >= 1 && p <= 9) || (p >= 18 && p <= 21)) {
+                    div.classList.add('hot-zone');
+                }
                 div.id = `stand-${pos}`;
-                div.innerHTML = `
-                    <span class="stand-num">${pos}</span>
-                    <span class="stand-flight"></span>
-                    <span class="multi-indicator"></span>
-                `;
+                div.innerHTML = `<span class="stand-num">${pos}</span><span class="stand-flight mono"></span><span class="multi-indicator"></span>`;
                 grid.appendChild(div);
             });
         }
@@ -237,7 +267,6 @@
             document.getElementById('reloj').innerText = new Date().toLocaleTimeString('es-AR', {hour12: false});
         }, 1000);
 
-        // ROTACIÓN DE CARRUSEL (Cada 3 segundos)
         setInterval(() => {
             carouselIndex++;
             renderApronFromState();
@@ -264,15 +293,84 @@
             renderTable(globalData.partidas, 'tbl-partidas', 'gate');
             renderTable(globalData.arribos, 'tbl-arribos', 'belt');
             renderWatchlist();
-            prepareApronData(); // Preparar datos para el mapa
-            renderApronFromState(); // Dibujar mapa
+            prepareApronData(); 
+            renderApronFromState();
+            updateHeaderStats();
         }
 
-        // Paso 1: Agrupar vuelos por posición
-        function prepareApronData() {
-            apronState = {}; // Reset
+        // --- CALCULADORA DE TIEMPO AJUSTADA (30 a 90 min) ---
+        function checkPreBoarding(v) {
+            // Si ya está demorado, NO es PRE
+            if (/DEM|CAN|DLY/.test((v.estado || "").toUpperCase())) return false;
             
-            // Procesar Partidas
+            // Si el texto nativo dice PRE, es PRE
+            if ((v.estado || "").toUpperCase().includes("PRE")) return true;
+
+            const timeStr = v.hora_est || v.hora_prog; 
+            if (!timeStr || !timeStr.includes(':')) return false;
+
+            const now = new Date();
+            const [h, m] = timeStr.split(':').map(Number);
+            const flightTime = new Date();
+            flightTime.setHours(h, m, 0);
+
+            let diff = (flightTime - now) / 60000; 
+
+            if (diff < -720) diff += 1440; 
+            if (diff > 720) diff -= 1440;  
+
+            // VENTANA OPERATIVA: Entre 30 y 90 minutos antes
+            return diff > 30 && diff <= 90;
+        }
+
+        function updateHeaderStats() {
+            // 1. Demoras
+            const countDep = globalData.partidas.filter(v => /DEM|CAN|DLY/.test((v.estado || "").toUpperCase())).length;
+            const countArr = globalData.arribos.filter(v => /DEM|CAN|DLY/.test((v.estado || "").toUpperCase())).length;
+            updateStatElement(document.getElementById('count-dep'), countDep, false);
+            updateStatElement(document.getElementById('count-arr'), countArr, false);
+
+            // 2. Pre-embarque
+            let preCab = 0;
+            let preInt = 0;
+            globalData.partidas.forEach(v => {
+                if (checkPreBoarding(v)) {
+                    if (AEROPUERTOS_INT.includes(v.lugar.toUpperCase())) preInt++;
+                    else preCab++;
+                }
+            });
+            updateStatElement(document.getElementById('pre-cab'), preCab, true);
+            updateStatElement(document.getElementById('pre-int'), preInt, true);
+
+            // 3. Posiciones Calientes
+            let hotCount = 0;
+            const allFlights = [...globalData.partidas, ...globalData.arribos];
+            allFlights.forEach(v => {
+                const p = parseInt(v.posicion);
+                if (!isNaN(p) && ((p >= 1 && p <= 9) || (p >= 18 && p <= 21))) {
+                    hotCount++;
+                }
+            });
+            updateStatElement(document.getElementById('count-hot'), hotCount, false, true);
+        }
+
+        function updateStatElement(el, count, isPre, isHot) {
+            el.innerText = count;
+            el.classList.remove('val-ok', 'val-alert');
+            
+            if (isPre) return; 
+
+            if (isHot) {
+                if (count > 0) el.classList.add('val-alert');
+                else el.classList.add('val-ok');
+            } else {
+                if (count === 0) el.classList.add('val-ok');
+                else el.classList.add('val-alert');
+            }
+        }
+
+        function prepareApronData() {
+            apronState = {};
             globalData.partidas.forEach(v => {
                 if(v.posicion && v.posicion !== "---") {
                     let cleanPos = v.posicion.padStart(2, '0');
@@ -280,8 +378,6 @@
                     apronState[cleanPos].push({ ...v, type: 'dep', id: v.vuelo+'_D' });
                 }
             });
-
-            // Procesar Arribos
             globalData.arribos.forEach(v => {
                 if(v.posicion && v.posicion !== "---") {
                     let cleanPos = v.posicion.padStart(2, '0');
@@ -291,49 +387,36 @@
             });
         }
 
-        // Paso 2: Renderizar usando el índice del carrusel
         function renderApronFromState() {
-            // Limpiar visualmente primero
             document.querySelectorAll('.stand').forEach(s => {
-                s.className = 'stand'; // Reset clases
-                if(parseInt(s.id.split('-')[1]) >= 1 && parseInt(s.id.split('-')[1]) <= 9) s.classList.add('hot-zone');
+                s.className = 'stand';
+                const p = parseInt(s.id.split('-')[1]);
+                if ((p >= 1 && p <= 9) || (p >= 18 && p <= 21)) s.classList.add('hot-zone');
                 s.querySelector('.stand-flight').innerText = '';
                 s.querySelector('.multi-indicator').innerText = '';
                 s.onclick = null;
             });
 
-            // Recorrer el estado
             Object.keys(apronState).forEach(pos => {
                 const standDiv = document.getElementById(`stand-${pos}`);
                 if(standDiv) {
                     const vuelosEnStand = apronState[pos];
                     const totalVuelos = vuelosEnStand.length;
-                    
-                    // Elegir qué vuelo mostrar basado en el reloj
                     const vueloAMostrar = vuelosEnStand[carouselIndex % totalVuelos];
                     
-                    // Aplicar estilos
                     if(vueloAMostrar.type === 'dep') standDiv.classList.add('occupied-dep');
                     else standDiv.classList.add('occupied-arr');
-
-                    // Texto del vuelo
-                    standDiv.querySelector('.stand-flight').innerText = vueloAMostrar.vuelo;
-
-                    // Indicador de múltiples vuelos (si hay más de 1)
+                    
+                    standDiv.querySelector('.stand-flight').innerText = vueloAMostrar.vuelo.split(' ')[1] || vueloAMostrar.vuelo;
+                    
                     if(totalVuelos > 1) {
-                        standDiv.querySelector('.multi-indicator').innerText = '••'; // Puntos
+                        standDiv.querySelector('.multi-indicator').innerText = '••';
                     }
 
-                    // Check Pinned (Si ALGUNO de los vuelos en esa pos está pinned, iluminar el borde)
                     const algunoPinned = vuelosEnStand.some(f => pinnedFlights.has(f.id));
-                    if(algunoPinned) {
-                        standDiv.classList.add('is-pinned');
-                    }
-
-                    // Click: Alterna el vuelo que se está mostrando actualmente
-                    standDiv.onclick = function() {
-                        toggleHighlight(vueloAMostrar.id);
-                    };
+                    if(algunoPinned) standDiv.classList.add('is-pinned');
+                    
+                    standDiv.onclick = function() { toggleHighlight(vueloAMostrar.id); };
                 }
             });
         }
@@ -342,20 +425,34 @@
             const tbody = document.querySelector(`#${tableId} tbody`);
             tbody.innerHTML = '';
             if (!lista) return;
-
+            
             lista.forEach(v => {
                 const vueloId = v.vuelo + (type === 'gate' ? '_D' : '_A');
                 const isSelected = pinnedFlights.has(vueloId);
                 let rowClass = '';
 
                 if (isSelected) {
-                    rowClass = /DEM|CAN|DLY/.test(v.estado) ? 'row-selected-alert' : 'row-selected';
-                } else {
+                    if (/DEM|CAN|DLY/.test(v.estado)) rowClass = 'row-selected-alert';
+                    else rowClass = 'row-selected';
+                } 
+                else {
                     const lugar = v.lugar ? v.lugar.toUpperCase() : "";
+                    const vuelo = v.vuelo ? v.vuelo.toUpperCase() : "";
                     const posNum = parseInt(v.posicion);
+                    
+                    const esHotZone = (!isNaN(posNum) && (
+                        (posNum >= 1 && posNum <= 9) || 
+                        (posNum >= 18 && posNum <= 21)
+                    ));
+
                     const esGRU = (lugar === "GRU");
-                    const esZonaCaliente = (!isNaN(posNum) && posNum >= 1 && posNum <= 9);
-                    if (esGRU || esZonaCaliente) rowClass = 'row-auto-highlight';
+                    const esIGR_FO = (lugar === "IGR" && vuelo.startsWith("FO"));
+                    
+                    if (esHotZone) {
+                        rowClass = 'row-auto-red';
+                    } else if (esGRU || esIGR_FO) {
+                        rowClass = 'row-auto-violet';
+                    }
                 }
                 
                 const tr = document.createElement('tr');
@@ -372,7 +469,6 @@
             const arrC = document.getElementById('wl-arr-container');
             const tDep = document.querySelector('#tbl-wl-dep tbody');
             const tArr = document.querySelector('#tbl-wl-arr tbody');
-            
             tDep.innerHTML = ''; tArr.innerHTML = '';
 
             const trackDep = globalData.partidas.map(v=>({...v,type:'gate',id:v.vuelo+'_D'})).filter(f=>pinnedFlights.has(f.id));
@@ -381,37 +477,50 @@
             if(trackDep.length===0 && trackArr.length===0) { section.style.display='none'; return; }
             else section.style.display='block';
 
-            if(trackDep.length>0) {
-                depC.classList.remove('empty');
-                trackDep.forEach(v => {
-                    const tr=document.createElement('tr'); tr.onclick=()=>toggleHighlight(v.id); tr.innerHTML=generateRowHTML(v,'gate'); tDep.appendChild(tr);
-                });
+            if(trackDep.length>0) { 
+                depC.classList.remove('empty'); 
+                trackDep.forEach(v => { 
+                    const tr=document.createElement('tr'); tr.onclick=()=>toggleHighlight(v.id); 
+                    tr.innerHTML=generateRowHTML(v,'gate'); tDep.appendChild(tr); 
+                }); 
             } else depC.classList.add('empty');
 
-            if(trackArr.length>0) {
-                arrC.classList.remove('empty');
-                trackArr.forEach(v => {
-                    const tr=document.createElement('tr'); tr.onclick=()=>toggleHighlight(v.id); tr.innerHTML=generateRowHTML(v,'belt'); tArr.appendChild(tr);
-                });
+            if(trackArr.length>0) { 
+                arrC.classList.remove('empty'); 
+                trackArr.forEach(v => { 
+                    const tr=document.createElement('tr'); tr.onclick=()=>toggleHighlight(v.id); 
+                    tr.innerHTML=generateRowHTML(v,'belt'); tArr.appendChild(tr); 
+                }); 
             } else arrC.classList.add('empty');
         }
 
         function generateRowHTML(v, type) {
-            let stCl = "st-ok";
-            let estadoUpper = (v.estado || "").toUpperCase();
-            if (/DEM|CAN|DLY/.test(estadoUpper)) stCl = "st-alert-flash";
-            else if (estadoUpper.includes("PRE")) stCl = "st-pre";
+            let stText = v.estado || ""; 
+            let estadoUpper = stText.toUpperCase();
+            let stClass = "st-ok";
 
-            let extra = (v.dato_extra && v.dato_extra!=="---") ? (type==='gate'?`<span class="badge b-gate">${v.dato_extra}</span>`:`<span class="badge b-belt">C ${v.dato_extra}</span>`) : "";
-            let pos = (v.posicion && v.posicion!=="---") ? `<span class="badge mono b-pos">${v.posicion}</span>` : "";
+            // PRIORIDAD DE ESTADOS
+            if (/DEM|CAN|DLY/.test(estadoUpper)) {
+                stClass = "st-alert-flash";
+            } 
+            else if (type === 'gate' && checkPreBoarding(v)) {
+                stClass = "st-pre"; 
+                stText = "PRE";
+            }
+            else if (estadoUpper.includes("PRE")) {
+                stClass = "st-pre";
+            }
+
+            let extra = (v.dato_extra && v.dato_extra!=="---") ? (type==='gate'?`<span class="badge b-gate">${v.dato_extra}</span>`:`<span class="badge b-belt">C${v.dato_extra}</span>`) : "";
+            let pos = (v.posicion && v.posicion!=="---") ? `<span class="badge b-pos">${v.posicion}</span>` : "";
             let mat = (v.matricula && v.matricula!=="---") ? `<span class="mono tail-number">${v.matricula}</span>` : "";
-
-            let displayTime2 = "";
-            if (v.hora_real) displayTime2 = `<span class="mono time-real">${v.hora_real}</span>`;
-            else if (v.hora_est) displayTime2 = `<span class="mono time-est">${v.hora_est}</span>`;
+            
+            let displayTime2 = ""; 
+            if (v.hora_real) displayTime2 = `<span class="mono time-real">${v.hora_real}</span>`; 
+            else if (v.hora_est) displayTime2 = `<span class="mono time-est">${v.hora_est}</span>`; 
             else displayTime2 = `<span class="mono" style="color:#444">--:--</span>`;
-
-            return `<td class="mono bold">${v.vuelo}</td><td class="bold">${v.lugar}</td><td class="mono time-prog">${v.hora_prog}</td><td>${displayTime2}</td><td>${mat}</td><td>${pos}</td><td>${extra}</td><td><span class="${stCl} mono bold">${v.estado||""}</span></td>`;
+            
+            return `<td class="mono bold">${v.vuelo}</td><td class="font-bold">${v.lugar}</td><td class="mono">${v.hora_prog}</td><td>${displayTime2}</td><td>${mat}</td><td>${pos}</td><td>${extra}</td><td><span class="st-pill ${stClass}">${stText}</span></td>`;
         }
 
         cargarDatos();
