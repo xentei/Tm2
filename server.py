@@ -92,12 +92,10 @@ def proxy_datos():
         print(f"Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    print("--- SERVIDOR LOCAL v10 INICIADO ---")
-    app.run(port=5000, debug=True)
-
+# --- ESTA ES LA PARTE IMPORTANTE PARA RENDER ---
 if __name__ == '__main__':
     # Obtiene el puerto del entorno de la nube, si no existe usa el 5000
     port = int(os.environ.get("PORT", 5000))
+    print(f"--- INICIANDO SERVIDOR EN PUERTO {port} ---")
     # host='0.0.0.0' es OBLIGATORIO para que sea visible en internet
     app.run(host='0.0.0.0', port=port)
