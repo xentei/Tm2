@@ -1,179 +1,164 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AEP OPS CONTROL | v27 LOGIC FIX</title>
+    <title>AEP OPS CONTROL | v53 DATA ADAPTER</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
     <style>
         :root {
-            --bg-color: #050505;
-            --panel-bg: #101010;
-            --border-color: #333;
-            
-            /* Colores */
-            --accent-dep: #ff6b00; 
-            --accent-arr: #00f0ff; 
-            --alert-color: #ff003c; 
-            --ok-color: #00ff88;
-            --pre-color: #ccff00; /* Verde Lima */
-            --highlight-border: #ffd700; 
-            
-            /* Colores de Reglas */
-            --auto-rule-violet-bg: rgba(208, 0, 255, 0.15);
-            --auto-rule-violet-border: #d000ff;
-            --auto-rule-red-bg: rgba(255, 60, 60, 0.15);
-            --auto-rule-red-border: #ff3c3c;
-            
-            --text-main: #ffffff;
-            --text-dim: #888;
+            --bg-color: #050505; --panel-bg: #101010; --border-color: #333;
+            --accent-dep: #9c27b0; --accent-arr: #ff5722; 
+            --alert-color: #ff003c; --ok-color: #00ff88; --pre-color: #ccff00; --highlight-border: #ffd700;
+            --text-main: #ffffff; --text-dim: #888;
+            --auto-rule-violet-bg: rgba(208, 0, 255, 0.15); --auto-rule-violet-border: #d000ff;
+            --auto-rule-red-bg: rgba(255, 60, 60, 0.15); --auto-rule-red-border: #ff3c3c;
         }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        * { box-sizing: border-box; }
-        body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-
-        /* HEADER */
-        header { display: flex; justify-content: space-between; align-items: center; padding: 8px 20px; background: #000; border-bottom: 2px solid var(--border-color); flex-shrink: 0; }
-        
-        .brand { font-family: 'JetBrains Mono'; font-weight: 900; font-size: 20px; text-transform: uppercase; color: #fff; letter-spacing: 1px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 5px 20px; background: #000; border-bottom: 2px solid var(--border-color); flex-shrink: 0; height: 50px; }
+        .brand { font-family: 'JetBrains Mono'; font-weight: 900; font-size: 18px; text-transform: uppercase; color: #fff; letter-spacing: 1px; }
         .brand span { color: var(--accent-dep); }
-
-        /* PANEL DE ESTADÍSTICAS */
-        .status-board {
-            display: flex; gap: 20px; align-items: center;
-            background: #111; border: 1px solid #333;
-            padding: 5px 15px; border-radius: 4px;
-        }
-        .stat-group { display: flex; gap: 15px; align-items: center; }
-        .stat-item { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono'; font-size: 10px; }
-        .stat-label { color: #888; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+        .status-board { display: flex; gap: 15px; align-items: center; height: 100%; }
+        .stat-group { display: flex; gap: 10px; align-items: center; border-right: 1px solid #333; padding-right: 15px; }
+        .stat-group:last-child { border-right: none; }
+        .stat-item { display: flex; align-items: center; gap: 5px; font-family: 'JetBrains Mono'; font-size: 11px; }
+        .stat-label { color: #888; font-weight: 700; letter-spacing: 0.5px; }
         .stat-value { font-weight: 900; font-size: 14px; padding: 0 2px; }
-        
-        .divider { width: 1px; height: 18px; background: #444; }
-
-        /* Colores dinámicos */
         .val-ok { color: var(--ok-color); text-shadow: 0 0 5px rgba(0, 255, 136, 0.3); }
         .val-alert { color: var(--alert-color); animation: flash-text 1s infinite; text-shadow: 0 0 8px var(--alert-color); }
         .val-pre { color: var(--pre-color); text-shadow: 0 0 5px rgba(204, 255, 0, 0.4); }
+        .clock { font-family: 'JetBrains Mono'; font-size: 20px; font-weight: 700; color: #fff; }
 
-        .clock { font-family: 'JetBrains Mono'; font-size: 22px; font-weight: 700; color: #fff; }
+        #apron-container { padding: 10px 20px; border-bottom: 1px solid var(--border-color); background: #080808; flex-shrink: 0; }
+        .apron-header { font-size: 10px; color: #666; margin-bottom: 5px; text-transform: uppercase; font-weight: 800; font-family: 'JetBrains Mono'; letter-spacing: 1px; }
+        .apron-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 5px; }
+        
+        .stand { height: 35px; background: #1a1a1a; border: 1px solid #333; border-radius: 3px; position: relative; display: flex; align-items: center; justify-content: center; transition: all 0.2s; cursor: default; }
+        .stand-num { position: absolute; top: 1px; left: 3px; font-size: 9px; color: #fff; font-family: 'JetBrains Mono'; font-weight: 900; z-index: 5; text-shadow: 0 0 2px #000; }
+        
+        /* Animación suave para el cambio de vuelo */
+        .stand-flight { 
+            font-family: 'JetBrains Mono'; font-weight: 700; font-size: 11px; color: #fff; z-index: 2; letter-spacing: -0.5px; 
+            animation: fade-text 0.5s ease-in-out;
+        }
+        @keyframes fade-text { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- PLATAFORMA --- */
-        #apron-container { padding: 15px 20px; border-bottom: 1px solid var(--border-color); background: #080808; flex-shrink: 0; }
-        .apron-header { font-size: 11px; color: #666; margin-bottom: 10px; text-transform: uppercase; font-weight: 800; font-family: 'JetBrains Mono'; letter-spacing: 1px; }
-        .apron-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); gap: 8px; }
-
-        .stand { height: 40px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; position: relative; display: flex; align-items: center; justify-content: center; transition: all 0.2s; cursor: default; }
-        .stand-num { position: absolute; top: 1px; left: 3px; font-size: 11px; color: #fff; font-family: 'JetBrains Mono'; font-weight: 900; text-shadow: 0 0 2px #000, 0 0 4px #000; z-index: 5; }
-        .stand-flight { font-family: 'JetBrains Mono'; font-weight: 700; font-size: 12px; color: #fff; z-index: 2; letter-spacing: -0.5px; }
-        .multi-indicator { position: absolute; bottom: 1px; right: 2px; font-size: 9px; color: #fff; font-weight: 900; letter-spacing: -1px; }
-
-        .stand.occupied-dep { border-color: var(--accent-dep); background: rgba(255, 107, 0, 0.15); box-shadow: inset 0 0 10px rgba(255, 107, 0, 0.1); cursor: pointer; }
+        .multi-indicator { position: absolute; bottom: 1px; right: 2px; font-size: 8px; color: #fff; font-weight: 900; letter-spacing: -1px; }
+        .stand.occupied-dep { border-color: var(--accent-dep); background: rgba(156, 39, 176, 0.15); cursor: pointer; }
         .stand.occupied-dep .stand-flight { color: var(--accent-dep); }
-        .stand.occupied-arr { border-color: var(--accent-arr); background: rgba(0, 240, 255, 0.15); box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1); cursor: pointer; }
+        .stand.occupied-arr { border-color: var(--accent-arr); background: rgba(255, 87, 34, 0.15); cursor: pointer; }
         .stand.occupied-arr .stand-flight { color: var(--accent-arr); }
-        .stand.is-pinned { border: 2px solid var(--highlight-border) !important; background: rgba(255, 215, 0, 0.2) !important; transform: scale(1.05); z-index: 10; box-shadow: 0 0 15px rgba(255,215,0,0.3); }
-        .stand.is-pinned .stand-flight { color: #fff !important; }
-        .stand.hot-zone { border-bottom: 3px solid var(--alert-color); }
+        .stand.is-pinned { border: 2px solid #fff !important; background: rgba(255, 255, 255, 0.2) !important; transform: scale(1.05); z-index: 10; }
+        .stand.is-pinned .stand-flight { color: #fff !important; text-shadow: 0 0 5px #fff; }
+        .stand.hot-zone { border-bottom: 2px solid var(--alert-color); }
 
-        /* WATCHLIST */
-        #watchlist-section { display: none; padding: 0 20px; margin-top: 15px; flex-shrink: 0; }
-        .watchlist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px; background: rgba(255,215,0,0.05); border: 1px solid var(--highlight-border); border-radius: 4px; }
-        .watchlist-col.empty { display: none; }
-        .watchlist-header { font-size: 11px; color: var(--highlight-border); font-weight: 800; text-transform: uppercase; margin-bottom: 5px; font-family: 'JetBrains Mono'; }
-
-        /* LAYOUT */
-        .content-split { flex: 1; display: flex; overflow: hidden; padding: 15px 20px; gap: 20px; }
-        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 3; min-width: 650px; height: 100%; min-height: 0; }
-        #map-container { flex: 1; border: 1px solid var(--border-color); background: #000; border-radius: 4px; overflow: hidden; min-width: 250px; }
+        .content-split { flex: 1; display: flex; overflow: hidden; padding: 10px 20px; gap: 15px; }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex: 3; min-width: 600px; height: 100%; min-height: 0; }
+        #map-container { flex: 1; border: 1px solid var(--border-color); background: #050505; border-radius: 4px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
         .panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 4px; display: flex; flex-direction: column; overflow: hidden; height: 100%; }
-        .panel-header { padding: 12px; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; background: #151515; }
-        .ph-dep { color: var(--accent-dep); border-top: 3px solid var(--accent-dep); }
-        .ph-arr { color: var(--accent-arr); border-top: 3px solid var(--accent-arr); }
+        .panel-header { padding: 8px 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; background: #151515; }
+        .ph-dep { color: var(--accent-dep); border-top: 2px solid var(--accent-dep); }
+        .ph-arr { color: var(--accent-arr); border-top: 2px solid var(--accent-arr); }
         .table-container { flex: 1; overflow-y: auto; }
-        #radar-frame { width: 100%; height: 100%; border: none; }
+        .table-container::-webkit-scrollbar { width: 8px; }
+        .table-container::-webkit-scrollbar-track { background: #0a0a0a; }
+        .table-container::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        .table-container::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        /* TABLAS */
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        /* VISTAS DE MAPA (DEFAULT RADAR) */
+        #view-plano { width: 100%; height: 100%; position: absolute; top:0; left:0; display: none; }
+        #view-radar { width: 100%; height: 100%; position: absolute; top:0; left:0; display: block; }
+        #view-radar iframe { width: 100%; height: 100%; border: none; }
+        
+        .map-btn-group { position: absolute; top: 10px; right: 10px; z-index: 9999; display: flex; gap: 5px; }
+        .map-btn { background: rgba(20, 20, 20, 0.9); color: #fff; border: 1px solid #555; padding: 4px 8px; font-family: 'JetBrains Mono'; font-size: 10px; cursor: pointer; border-radius: 3px; transition: all 0.2s; }
+        .map-btn:hover { background: #333; border-color: #fff; }
+
+        .leaflet-image-layer { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(1.3); }
+        
+        /* PUNTOS EN MAPA */
+        .custom-dot { width: 16px; height: 16px; border-radius: 50%; background-color: #222; border: 2px solid #fff; box-shadow: 0 0 5px rgba(0, 0, 0, 0.8); transition: all 0.3s; cursor: pointer; }
+        .custom-dot.dep { background-color: var(--accent-dep); box-shadow: 0 0 10px var(--accent-dep); animation: pulse 3s infinite; }
+        .custom-dot.arr { background-color: var(--accent-arr); box-shadow: 0 0 10px var(--accent-arr); animation: pulse 3s infinite; }
+        .custom-dot.conflict { background-color: var(--alert-color); box-shadow: 0 0 15px var(--alert-color); animation: flash 1s infinite; }
+        .custom-dot.is-selected { transform: scale(1.5) !important; border-color: #fff !important; background-color: #fff !important; box-shadow: 0 0 20px #fff !important; z-index: 999 !important; }
+        
+        /* ZOOM TEXT */
+        .leaflet-tooltip-flight { 
+            background: rgba(0, 0, 0, 0.85); border: 1px solid #666; color: #fff; 
+            font-family: 'JetBrains Mono'; font-weight: bold; 
+            border-radius: 4px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.8);
+            transition: font-size 0.2s, padding 0.2s; text-align: center;
+        }
+        .zoom-low .leaflet-tooltip-flight { font-size: 8px; padding: 0px 2px; line-height: 1.1; }
+        .zoom-mid .leaflet-tooltip-flight { font-size: 10px; padding: 2px 4px; line-height: 1.2; }
+        .zoom-high .leaflet-tooltip-flight { font-size: 13px; padding: 4px 8px; line-height: 1.3; border: 2px solid #fff; }
+        .leaflet-tooltip-own { background: rgba(0,0,0,0.8); border: 1px solid #555; color: #fff; font-family: 'JetBrains Mono'; font-size: 10px; font-weight: bold; padding: 0 4px; border-radius: 3px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.3); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes flash-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
         thead { position: sticky; top: 0; background-color: #151515; z-index: 10; border-bottom: 1px solid #333; }
-        th { text-align: left; padding: 10px; color: #888; font-size: 11px; text-transform: uppercase; font-weight: 700; white-space: nowrap; }
-        td { padding: 8px 10px; vertical-align: middle; border-bottom: 1px solid #222; white-space: nowrap; color: #eee; }
-        tbody tr { transition: background 0.1s; }
+        th { text-align: left; padding: 8px 10px; color: #888; font-size: 10px; text-transform: uppercase; font-weight: 700; white-space: nowrap; }
+        td { padding: 6px 10px; vertical-align: middle; border-bottom: 1px solid #222; white-space: nowrap; color: #eee; }
+        tbody tr { transition: background 0.1s; cursor: pointer; }
         tbody tr:hover { background-color: #222 !important; }
-
-        /* FILAS */
-        .row-selected { background-color: rgba(255, 215, 0, 0.15) !important; border-left: 4px solid var(--highlight-border) !important; }
-        .row-selected-alert { background-color: rgba(255, 0, 60, 0.25) !important; border-left: 4px solid var(--alert-color) !important; }
-        .row-auto-violet { background-color: var(--auto-rule-violet-bg); border-left: 4px solid var(--auto-rule-violet-border); }
-        .row-auto-violet td { color: #e080ff; font-weight: 700; text-shadow: 0 0 5px rgba(208, 0, 255, 0.4); }
-        .row-auto-red { background-color: var(--auto-rule-red-bg); border-left: 4px solid var(--auto-rule-red-border); }
-        .row-auto-red td { color: #ff9999; font-weight: 700; }
-
-        /* DATA */
+        
+        .row-selected { background-color: rgba(255, 215, 0, 0.15) !important; border-left: 3px solid var(--highlight-border) !important; }
+        .row-selected td { color: #fff !important; font-weight: bold; }
+        .row-selected-alert { background-color: rgba(255, 0, 60, 0.25) !important; border-left: 3px solid var(--alert-color) !important; }
+        .row-auto-violet { background-color: var(--auto-rule-violet-bg); border-left: 3px solid var(--auto-rule-violet-border); }
+        .row-auto-red { background-color: var(--auto-rule-red-bg); border-left: 3px solid var(--auto-rule-red-border); }
+        
         .mono { font-family: 'JetBrains Mono', monospace; }
         .bold { font-weight: 700; }
-        .tail-number { color: #aaa; font-size: 12px; border: 1px solid #444; padding: 1px 4px; border-radius: 2px; }
+        .tail-number { color: #aaa; font-size: 11px; border: 1px solid #444; padding: 1px 4px; border-radius: 2px; }
         .time-est { color: #ffae00; font-weight: bold; }
         .time-real { color: #00ff88; font-weight: bold; }
-        .badge { display: inline-flex; align-items: center; justify-content: center; padding: 2px 6px; border-radius: 3px; font-weight: 700; font-size: 11px; min-width: 30px; font-family: 'JetBrains Mono'; }
+        .badge { display: inline-flex; align-items: center; justify-content: center; padding: 1px 5px; border-radius: 3px; font-weight: 700; font-size: 11px; min-width: 25px; font-family: 'JetBrains Mono'; }
         .b-pos { background: #222; color: #ffd700; border: 1px solid #444; }
-        .b-gate { color: var(--accent-arr); background: rgba(0, 240, 255, 0.1); }
+        .b-gate { color: var(--accent-arr); background: rgba(255, 87, 34, 0.1); }
         .b-belt { color: #fff; background: #333; }
-
-        @keyframes flash-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .st-pill { padding: 2px 6px; border-radius: 3px; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .st-pill { padding: 1px 5px; border-radius: 3px; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
         .st-ok { color: #00ff88; }
         .st-pre { color: #ccff00; background: rgba(204, 255, 0, 0.15); border: 1px solid #ccff00; animation: flash-text 0.6s infinite; text-shadow: 0 0 8px #ccff00; }
         .st-alert-flash { color: #ff003c; background: rgba(255, 0, 60, 0.15); border: 1px solid #ff003c; animation: flash-text 0.6s infinite; text-shadow: 0 0 8px #ff003c; }
 
-        footer { padding: 5px 20px; font-family: 'JetBrains Mono'; font-size: 10px; color: #666; background: #000; border-top: 1px solid #222; display: flex; justify-content: space-between; flex-shrink: 0; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #050505; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        .btn-table-unpin { border: 1px solid var(--alert-color); background: rgba(255, 0, 0, 0.1); color: var(--alert-color); border-radius: 3px; cursor: pointer; padding: 0 4px; font-weight: bold; font-size: 10px; }
+        .btn-table-unpin:hover { background: var(--alert-color); color: #fff; }
+        .flight-link { text-decoration: none; color: inherit; cursor: pointer; transition: color 0.2s; }
+        .flight-link:hover { text-decoration: underline; color: #fff; }
 
-        @media (max-width: 1200px) { .content-split { flex-direction: column; height: auto; overflow-y: auto; } .main-grid { flex: none; height: auto; } #map-container { flex: none; height: 350px; } }
+        footer { padding: 5px 20px; font-family: 'JetBrains Mono'; font-size: 10px; color: #666; background: #000; border-top: 1px solid #222; display: flex; justify-content: space-between; flex-shrink: 0; }
+        #sim-btn { background: #333; border: 1px solid #555; color: #fff; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-family: 'JetBrains Mono'; font-size: 10px; }
+        #sim-btn.active { background: var(--alert-color); border-color: #fff; }
     </style>
 </head>
 <body>
 
     <header>
         <div class="brand"><span>⚡</span> AEP OPS</div>
-
         <div class="status-board">
             <div class="stat-group">
-                <div class="stat-item">
-                    <span class="stat-label">PARTIDAS DEMORADAS:</span>
-                    <span class="stat-value" id="count-dep">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">ARRIBOS DEMORADOS:</span>
-                    <span class="stat-value" id="count-arr">0</span>
-                </div>
+                <div class="stat-item"><span class="stat-label">PARTIDAS DEM:</span><span class="stat-value" id="count-dep">0</span></div>
+                <div class="stat-item"><span class="stat-label">ARRIBOS DEM:</span><span class="stat-value" id="count-arr">0</span></div>
             </div>
-
             <div class="divider"></div>
-
             <div class="stat-group">
-                <div class="stat-item">
-                    <span class="stat-label" style="color:var(--pre-color)">PRE NACIONAL:</span>
-                    <span class="stat-value val-pre" id="pre-cab">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label" style="color:var(--pre-color)">PRE INTER:</span>
-                    <span class="stat-value val-pre" id="pre-int">0</span>
-                </div>
+                <div class="stat-item"><span class="stat-label" style="color:var(--pre-color)">PRE NAC:</span><span class="stat-value val-pre" id="pre-cab">0</span></div>
+                <div class="stat-item"><span class="stat-label" style="color:var(--pre-color)">PRE INT:</span><span class="stat-value val-pre" id="pre-int">0</span></div>
             </div>
-
             <div class="divider"></div>
-
             <div class="stat-group">
-                <div class="stat-item">
-                    <span class="stat-label" style="color:var(--alert-color)">POSICIONES CALIENTES:</span>
-                    <span class="stat-value val-alert" id="count-hot">0</span>
-                </div>
+                <div class="stat-item"><span class="stat-label" style="color:var(--alert-color)">POS CALIENTES:</span><span class="stat-value val-alert" id="count-hot">0</span></div>
             </div>
         </div>
-
         <div class="clock" id="reloj">--:--:--</div>
     </header>
 
@@ -182,349 +167,516 @@
         <div class="apron-grid" id="apron-grid"></div>
     </div>
 
-    <div id="watchlist-section">
-        <div class="watchlist-grid">
-            <div class="watchlist-col" id="wl-dep-container">
-                <div class="watchlist-header">SALIDAS VIGILADAS</div>
-                <table id="tbl-wl-dep"><tbody></tbody></table>
-            </div>
-            <div class="watchlist-col" id="wl-arr-container">
-                <div class="watchlist-header">LLEGADAS VIGILADAS</div>
-                <table id="tbl-wl-arr"><tbody></tbody></table>
-            </div>
-        </div>
-    </div>
-
     <div class="content-split">
         <div class="main-grid">
             <div class="panel">
-                <div class="panel-header ph-dep"><span>🛫</span> Partidas</div>
-                <div class="table-container">
-                    <table id="tbl-partidas">
-                        <thead><tr><th>Vuelo</th><th>Dest</th><th>Prog</th><th>Est/Real</th><th>Mat</th><th>Pos</th><th>Pta</th><th>Est</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
+                <div class="panel-header ph-dep"><span>🛫 Partidas</span></div>
+                <div class="table-container"><table id="tbl-partidas"><thead><tr><th>Vuelo</th><th>Dest</th><th>Prog</th><th>Est/Real</th><th>Mat</th><th>Pos</th><th>Pta</th><th>Est</th><th></th></tr></thead><tbody></tbody></table></div>
             </div>
             <div class="panel">
-                <div class="panel-header ph-arr"><span>🛬</span> Arribos</div>
-                <div class="table-container">
-                    <table id="tbl-arribos">
-                        <thead><tr><th>Vuelo</th><th>Orig</th><th>Prog</th><th>Est/Real</th><th>Mat</th><th>Pos</th><th>Cin</th><th>Est</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
+                <div class="panel-header ph-arr"><span>🛬 Arribos</span></div>
+                <div class="table-container"><table id="tbl-arribos"><thead><tr><th>Vuelo</th><th>Orig</th><th>Prog</th><th>Est/Real</th><th>Mat</th><th>Pos</th><th>Cin</th><th>Est</th><th></th></tr></thead><tbody></tbody></table></div>
             </div>
         </div>
 
         <div id="map-container">
-            <iframe 
-                id="radar-frame"
-                src="https://globe.adsbexchange.com/?lat=-34.57&lon=-58.42&zoom=9&hideSidebar&hideButtons&enableLabels" 
-                title="Radar AEP">
-            </iframe>
+            <div class="map-btn-group">
+                <button class="map-btn" onclick="window.appController.resetMap()">🔍 AEP</button>
+                <button class="map-btn" id="btn-toggle-view" onclick="window.appController.toggleMapView()">🗺️ VER PLATAFORMA</button>
+            </div>
+            
+            <div id="view-plano">
+                <div id="map" style="width:100%; height:100%;"></div>
+            </div>
+            <div id="view-radar">
+                <iframe id="radar-frame" src="https://globe.adsbexchange.com/?lat=-34.57&lon=-58.42&zoom=9&hideSidebar&hideButtons&enableLabels"></iframe>
+            </div>
         </div>
     </div>
 
     <footer>
-        <div>SYSTEM: ONLINE</div>
+        <div id="sys-status">SYSTEM: ONLINE</div>
+        <button id="sim-btn" onclick="window.appController.toggleSim()">🛠️ CALIBRAR / TEST</button>
         <div>DATA: <span id="data-ts">...</span></div>
     </footer>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <script>
-        const API_URL = '/datos-limpios';
-        let pinnedFlights = new Set(); 
-        let globalData = { partidas: [], arribos: [] };
-        let apronState = {}; 
-        let carouselIndex = 0;
+        // CONFIGURACIÓN GLOBAL
+        const CONFIG = {
+            API_URL: '/datos-limpios',
+            UPDATE_INTERVAL: 10000,
+            CAROUSEL_INTERVAL: 2000, // 2 SEGUNDOS
+            PREBOARD_MIN: 30,
+            PREBOARD_MAX: 90,
+            AEROPUERTOS_INT: ["GRU", "GIG", "MVD", "SCL", "LIM", "ASU", "BOG", "FLN", "PDP", "VVI", "CWB", "POA", "MIA", "MAD"],
+            POSICIONES_AEP: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32A", "32B"],
+            HOT_ZONES: [1, 2, 3, 4, 5, 6, 7, 8, 9, 18, 19, 20, 21],
+            COORDENADAS_POSICIONES: {
+                "01": [818, 852], "02": [783, 886], "03": [723, 953], "04": [682, 1036], "05": [644, 1076],
+                "06": [604, 1115], "07": [570, 1153], "08": [533, 1191], "09": [500, 1222], "10": [466, 1247],
+                "11": [429, 1276], "12": [396, 1291], "13": [361, 1316], "14": [325, 1337], "15": [289, 1359],
+                "16": [254, 1380], "17": [216, 1401], "18": [183, 1436], "19": [142, 1480], "20": [107, 1513],
+                "21": [71, 1530], "23": [314, 1119], "24": [348, 1093], "25": [382, 1066], "26": [461, 978],
+                "27": [482, 964], "28": [513, 927], "29": [546, 886], "30": [579, 855], "31": [611, 814],
+                "32A": [865, 893], "32B": [900, 842]
+            }
+        };
 
-        const POSICIONES_AEP = [
-            "01", "02", "03", "04", "05", "06", "07", "08", "09", "10",
-            "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-            "21", "26", "27", "28", "29", "30", "31", "32A", "32B", "33", "34"
-        ];
+        const Utils = {
+            padPosition(pos) { 
+                if(!pos) return "---";
+                return !isNaN(pos) ? parseInt(pos).toString().padStart(2, '0') : pos; 
+            },
+            isHotZone(pos) { const p = parseInt(pos); return !isNaN(p) && CONFIG.HOT_ZONES.includes(p); },
+            isInternational(lugar) { return CONFIG.AEROPUERTOS_INT.includes((lugar || "").toUpperCase()); },
+            hasDelayStatus(estado) { return /DEM|CAN|DLY/.test((estado || "").toUpperCase()); },
+            isPreBoardingStatus(estado) { return (estado || "").toUpperCase().includes("PRE"); },
+            checkPreBoarding(flight) {
+                if (this.hasDelayStatus(flight.estado)) return false;
+                if (this.isPreBoardingStatus(flight.estado)) return true;
+                const timeStr = flight.hora_est || flight.hora_prog;
+                if (!timeStr || !timeStr.includes(':')) return false;
+                const now = new Date(); 
+                const parts = timeStr.split(':');
+                if(parts.length < 2) return false;
+                const h = parseInt(parts[0]);
+                const m = parseInt(parts[1]);
+                const flightTime = new Date(); flightTime.setHours(h, m, 0);
+                let diff = (flightTime - now) / 60000;
+                if (diff < -720) diff += 1440; if (diff > 720) diff -= 1440;
+                return diff > CONFIG.PREBOARD_MIN && diff <= CONFIG.PREBOARD_MAX;
+            },
+            updateClock() { document.getElementById('reloj').innerText = new Date().toLocaleTimeString('es-AR', { hour12: false }); },
+            getTodayDate() { return new Date().toISOString().split('T')[0]; }
+        };
 
-        const AEROPUERTOS_INT = ["GRU", "GIG", "MVD", "SCL", "LIM", "ASU", "BOG", "FLN", "PDP", "VVI", "CWB", "POA", "MIA", "MAD"];
+        class DataManager {
+            constructor() {
+                this.data = { partidas: [], arribos: [] };
+                this.pinnedFlights = new Set();
+                this.simMode = false;
+            }
+            async fetchData() {
+                if (this.simMode) return;
+                try {
+                    const res = await fetch(CONFIG.API_URL);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const rawData = await res.json();
+                    
+                    // === ADAPTADOR DE DATOS ===
+                    const normalize = (f, type) => {
+                        let hProg = f.STA || f.STD || "";
+                        if(hProg.includes(" ")) hProg = hProg.split(" ")[1];
+                        
+                        let hEst = f.ETA || f.ETD || "";
+                        if(hEst.includes(" ")) hEst = hEst.split(" ")[1];
+                        
+                        let hReal = f.ATA || f.ATD || "";
+                        if(hReal.includes(" ")) hReal = hReal.split(" ")[1];
 
-        function initApronMap() {
-            const grid = document.getElementById('apron-grid');
-            grid.innerHTML = '';
-            POSICIONES_AEP.forEach(pos => {
+                        let airline = f["Cia."] || f.Cia || "";
+                        let num = f.Vuelo || "";
+                        let fullFlight = (airline + " " + num).trim();
+                        let pos = f.Posicion || "---";
+
+                        return {
+                            vuelo: fullFlight,
+                            lugar: type === 'dep' ? (f.Destino || "---") : (f.Origen || "---"),
+                            hora_prog: hProg,
+                            hora_est: hEst,
+                            hora_real: hReal,
+                            matricula: f.Matricula || "---",
+                            posicion: pos,
+                            dato_extra: type === 'dep' ? (f.Puerta || "") : (f.Cinta || ""),
+                            estado: f.Remark || ""
+                        };
+                    };
+
+                    // Intenta usar datos formateados si existen, si no, usa el adaptador
+                    if (rawData.partidas && rawData.partidas.length > 0 && rawData.partidas[0].vuelo) {
+                         this.data = { partidas: rawData.partidas, arribos: rawData.arribos };
+                    } else {
+                         this.data = { 
+                            partidas: (rawData.partidas || []).map(f => normalize(f, 'dep')), 
+                            arribos: (rawData.arribos || []).map(f => normalize(f, 'arr')) 
+                        };
+                    }
+
+                    document.getElementById('data-ts').innerText = new Date().toLocaleTimeString('es-AR');
+                    return true;
+                } catch (e) { 
+                    console.error('Error fetching data:', e); 
+                    return false; 
+                }
+            }
+            pinFlight(id) { this.pinnedFlights.add(id); } 
+            unpinFlight(id) { this.pinnedFlights.delete(id); } 
+            isPinned(id) { return this.pinnedFlights.has(id); }
+            getAllFlights() { return [...this.data.partidas.map(f => ({ ...f, type: 'dep', id: `${f.vuelo}_D` })), ...this.data.arribos.map(f => ({ ...f, type: 'arr', id: `${f.vuelo}_A` }))]; }
+            getFlightById(id) {
+                const [vuelo, type] = id.split('_');
+                const list = type === 'D' ? this.data.partidas : this.data.arribos;
+                return list.find(f => f.vuelo === vuelo);
+            }
+            enableSimMode() {
+                this.simMode = true;
+                this.data = {
+                    partidas: [{ vuelo: "FO 5091", lugar: "MIA", hora_prog: "10:00", matricula: "LV-SIM", posicion: "01", estado: "PRE", dato_extra: "12" }, { vuelo: "SIM-32A", lugar: "COR", hora_prog: "10:30", matricula: "LV-TEST", posicion: "32A", estado: "HOR", dato_extra: "14" }],
+                    arribos: [{ vuelo: "SIM-ARR", lugar: "MDQ", hora_prog: "11:00", matricula: "LV-ARR", posicion: "15", estado: "ATE", dato_extra: "1" }]
+                };
+            }
+            disableSimMode() { this.simMode = false; }
+        }
+
+        class UIManager {
+            constructor(dataManager) { this.dataManager = dataManager; }
+            updateHeaderStats() {
+                const data = this.dataManager.data;
+                const countDep = data.partidas.filter(v => Utils.hasDelayStatus(v.estado)).length;
+                const countArr = data.arribos.filter(v => Utils.hasDelayStatus(v.estado)).length;
+                this.updateStatElement('count-dep', countDep, false);
+                this.updateStatElement('count-arr', countArr, false);
+                let preCab = 0, preInt = 0;
+                data.partidas.forEach(v => {
+                    if (Utils.checkPreBoarding(v)) {
+                        if (Utils.isInternational(v.lugar)) preInt++; else preCab++;
+                    }
+                });
+                this.updateStatElement('pre-cab', preCab, true);
+                this.updateStatElement('pre-int', preInt, true);
+                const allFlights = [...data.partidas, ...data.arribos];
+                const hotCount = allFlights.filter(v => Utils.isHotZone(v.posicion)).length;
+                this.updateStatElement('count-hot', hotCount, false, true);
+            }
+            updateStatElement(id, count, isPre, isHot = false) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.innerText = count;
+                el.classList.remove('val-ok', 'val-alert');
+                if (isPre) return;
+                if (isHot) { el.classList.add(count > 0 ? 'val-alert' : 'val-ok'); } 
+                else { el.classList.add(count === 0 ? 'val-ok' : 'val-alert'); }
+            }
+            renderTables() {
+                this.renderTable(this.dataManager.data.partidas, 'tbl-partidas', 'dep');
+                this.renderTable(this.dataManager.data.arribos, 'tbl-arribos', 'arr');
+            }
+            renderTable(lista, tableId, type) {
+                const tbody = document.querySelector(`#${tableId} tbody`);
+                if (!tbody) return;
+                tbody.innerHTML = '';
+                if (!lista || lista.length === 0) return;
+                const sortedList = [...lista].map(v => ({ ...v, id: `${v.vuelo}_${type === 'dep' ? 'D' : 'A'}` }));
+                sortedList.sort((a, b) => {
+                    const aPin = this.dataManager.isPinned(a.id);
+                    const bPin = this.dataManager.isPinned(b.id);
+                    if (aPin && !bPin) return -1;
+                    if (!aPin && bPin) return 1;
+                    return 0;
+                });
+                sortedList.forEach(v => {
+                    const tr = this.createTableRow(v, type);
+                    tbody.appendChild(tr);
+                });
+            }
+            createTableRow(v, type) {
+                const isSelected = this.dataManager.isPinned(v.id);
+                const tr = document.createElement('tr');
+                tr.className = this.getRowClass(v, isSelected);
+                tr.onclick = () => window.appController.selectFlight(v.id);
+                tr.innerHTML = this.generateRowHTML(v, type, isSelected);
+                return tr;
+            }
+            getRowClass(v, isSelected) {
+                if (isSelected) {
+                    return Utils.hasDelayStatus(v.estado) ? 'row-selected-alert' : 'row-selected';
+                }
+                const lugar = (v.lugar || "").toUpperCase();
+                const vuelo = (v.vuelo || "").toUpperCase();
+                const isHotZone = Utils.isHotZone(v.posicion);
+                const esGRU = (lugar === "GRU");
+                const esIGR_FO = (lugar === "IGR" && vuelo.startsWith("FO"));
+                if (isHotZone) return 'row-auto-red';
+                if (esGRU || esIGR_FO) return 'row-auto-violet';
+                return '';
+            }
+            generateRowHTML(v, type, isSelected) {
+                const estado = this.getEstadoBadge(v, type);
+                const extra = this.getExtraBadge(v, type);
+                const pos = this.getPosicionBadge(v);
+                const mat = this.getMatriculaBadge(v);
+                const displayTime = this.getTimeDisplay(v);
+                const actionCell = isSelected 
+                    ? `<td><button class="btn-table-unpin" onclick="event.stopPropagation(); window.appController.unpinFlight('${v.id}')">✕</button></td>`
+                    : `<td></td>`;
+                
+                let searchUrl;
+                const flightNumClean = v.vuelo.replace(/\D/g, ''); 
+                const todayDate = Utils.getTodayDate();
+                if (v.vuelo.toUpperCase().startsWith("FO")) {
+                    searchUrl = `https://flybondi.com/ar/flights?flightNo=${flightNumClean}&departureDate=${todayDate}`;
+                } else {
+                    searchUrl = `https://www.google.com/search?q=Vuelo+${v.vuelo}`;
+                }
+                const flightCell = `<a href="${searchUrl}" target="_blank" class="flight-link" onclick="event.stopPropagation()">${v.vuelo}</a>`;
+
+                return `<td class="mono bold">${flightCell}</td><td class="font-bold">${v.lugar}</td><td class="mono">${v.hora_prog || '--:--'}</td><td>${displayTime}</td><td>${mat}</td><td>${pos}</td><td>${extra}</td><td>${estado}</td>${actionCell}`;
+            }
+            getEstadoBadge(v, type) {
+                let stText = v.estado || "";
+                let stClass = "st-ok";
+                if (Utils.hasDelayStatus(v.estado)) { stClass = "st-alert-flash"; } 
+                else if (type === 'dep' && Utils.checkPreBoarding(v)) { stClass = "st-pre"; stText = "PRE"; } 
+                else if (Utils.isPreBoardingStatus(v.estado)) { stClass = "st-pre"; }
+                return `<span class="st-pill ${stClass}">${stText}</span>`;
+            }
+            getExtraBadge(v, type) {
+                if (!v.dato_extra || v.dato_extra === "---") return "";
+                return type === 'dep' ? `<span class="badge b-gate">${v.dato_extra}</span>` : `<span class="badge b-belt">C${v.dato_extra}</span>`;
+            }
+            getPosicionBadge(v) {
+                if (!v.posicion || v.posicion === "---") return "";
+                return `<span class="badge b-pos">${v.posicion}</span>`;
+            }
+            getMatriculaBadge(v) {
+                if (!v.matricula || v.matricula === "---") return "";
+                return `<span class="mono tail-number">${v.matricula}</span>`;
+            }
+            getTimeDisplay(v) {
+                if (v.hora_real) return `<span class="mono time-real">${v.hora_real}</span>`;
+                if (v.hora_est) return `<span class="mono time-est">${v.hora_est}</span>`;
+                return `<span class="mono" style="color:#444">--:--</span>`;
+            }
+            renderApron() {
+                const grid = document.getElementById('apron-grid');
+                if (!grid) return;
+                const apronData = this.prepareApronData();
+                grid.innerHTML = '';
+                CONFIG.POSICIONES_AEP.forEach(pos => {
+                    const stand = this.createStandElement(pos, apronData[pos]);
+                    grid.appendChild(stand);
+                });
+            }
+            prepareApronData() {
+                const apronData = {};
+                const allFlights = this.dataManager.getAllFlights();
+                allFlights.forEach(flight => {
+                    if (!flight.posicion || flight.posicion === "---") return;
+                    const pos = Utils.padPosition(flight.posicion);
+                    if (!apronData[pos]) apronData[pos] = [];
+                    apronData[pos].push(flight);
+                });
+                return apronData;
+            }
+            createStandElement(pos, flights) {
                 const div = document.createElement('div');
                 div.className = 'stand';
-                const p = parseInt(pos);
-                if ((p >= 1 && p <= 9) || (p >= 18 && p <= 21)) {
-                    div.classList.add('hot-zone');
+                if (Utils.isHotZone(pos)) div.classList.add('hot-zone');
+                const numSpan = document.createElement('span');
+                numSpan.className = 'stand-num';
+                numSpan.textContent = pos;
+                div.appendChild(numSpan);
+                if (flights && flights.length > 0) {
+                    const index = window.appController.carouselIndex % flights.length;
+                    const flight = flights[index];
+                    div.classList.add(flight.type === 'dep' ? 'occupied-dep' : 'occupied-arr');
+                    if (this.dataManager.isPinned(flight.id)) div.classList.add('is-pinned');
+                    const flightSpan = document.createElement('span');
+                    flightSpan.className = 'stand-flight';
+                    flightSpan.textContent = flight.vuelo.split(' ')[1] || flight.vuelo;
+                    div.appendChild(flightSpan);
+                    if (flights.length > 1) {
+                        const multi = document.createElement('span');
+                        multi.className = 'multi-indicator';
+                        multi.textContent = `×${flights.length}`;
+                        div.appendChild(multi);
+                    }
+                    div.onclick = () => window.appController.selectFlight(flight.id);
                 }
-                div.id = `stand-${pos}`;
-                div.innerHTML = `<span class="stand-num">${pos}</span><span class="stand-flight mono"></span><span class="multi-indicator"></span>`;
-                grid.appendChild(div);
-            });
-        }
-        initApronMap();
-
-        setInterval(() => {
-            document.getElementById('reloj').innerText = new Date().toLocaleTimeString('es-AR', {hour12: false});
-        }, 1000);
-
-        setInterval(() => {
-            carouselIndex++;
-            renderApronFromState();
-        }, 3000);
-
-        function toggleHighlight(vueloId) {
-            if(!vueloId) return;
-            if (pinnedFlights.has(vueloId)) pinnedFlights.delete(vueloId);
-            else pinnedFlights.add(vueloId);
-            refreshUI();
-        }
-
-        async function cargarDatos() {
-            try {
-                const res = await fetch(API_URL);
-                if(!res.ok) throw new Error("Error");
-                globalData = await res.json();
-                document.getElementById('data-ts').innerText = new Date().toLocaleTimeString('es-AR');
-                refreshUI();
-            } catch (e) { console.error(e); }
-        }
-
-        function refreshUI() {
-            renderTable(globalData.partidas, 'tbl-partidas', 'gate');
-            renderTable(globalData.arribos, 'tbl-arribos', 'belt');
-            renderWatchlist();
-            prepareApronData(); 
-            renderApronFromState();
-            updateHeaderStats();
-        }
-
-        // --- CALCULADORA DE TIEMPO AJUSTADA (30 a 90 min) ---
-        function checkPreBoarding(v) {
-            // Si ya está demorado, NO es PRE
-            if (/DEM|CAN|DLY/.test((v.estado || "").toUpperCase())) return false;
-            
-            // Si el texto nativo dice PRE, es PRE
-            if ((v.estado || "").toUpperCase().includes("PRE")) return true;
-
-            const timeStr = v.hora_est || v.hora_prog; 
-            if (!timeStr || !timeStr.includes(':')) return false;
-
-            const now = new Date();
-            const [h, m] = timeStr.split(':').map(Number);
-            const flightTime = new Date();
-            flightTime.setHours(h, m, 0);
-
-            let diff = (flightTime - now) / 60000; 
-
-            if (diff < -720) diff += 1440; 
-            if (diff > 720) diff -= 1440;  
-
-            // VENTANA OPERATIVA: Entre 30 y 90 minutos antes
-            return diff > 30 && diff <= 90;
-        }
-
-        function updateHeaderStats() {
-            // 1. Demoras
-            const countDep = globalData.partidas.filter(v => /DEM|CAN|DLY/.test((v.estado || "").toUpperCase())).length;
-            const countArr = globalData.arribos.filter(v => /DEM|CAN|DLY/.test((v.estado || "").toUpperCase())).length;
-            updateStatElement(document.getElementById('count-dep'), countDep, false);
-            updateStatElement(document.getElementById('count-arr'), countArr, false);
-
-            // 2. Pre-embarque
-            let preCab = 0;
-            let preInt = 0;
-            globalData.partidas.forEach(v => {
-                if (checkPreBoarding(v)) {
-                    if (AEROPUERTOS_INT.includes(v.lugar.toUpperCase())) preInt++;
-                    else preCab++;
-                }
-            });
-            updateStatElement(document.getElementById('pre-cab'), preCab, true);
-            updateStatElement(document.getElementById('pre-int'), preInt, true);
-
-            // 3. Posiciones Calientes
-            let hotCount = 0;
-            const allFlights = [...globalData.partidas, ...globalData.arribos];
-            allFlights.forEach(v => {
-                const p = parseInt(v.posicion);
-                if (!isNaN(p) && ((p >= 1 && p <= 9) || (p >= 18 && p <= 21))) {
-                    hotCount++;
-                }
-            });
-            updateStatElement(document.getElementById('count-hot'), hotCount, false, true);
-        }
-
-        function updateStatElement(el, count, isPre, isHot) {
-            el.innerText = count;
-            el.classList.remove('val-ok', 'val-alert');
-            
-            if (isPre) return; 
-
-            if (isHot) {
-                if (count > 0) el.classList.add('val-alert');
-                else el.classList.add('val-ok');
-            } else {
-                if (count === 0) el.classList.add('val-ok');
-                else el.classList.add('val-alert');
+                return div;
             }
         }
 
-        function prepareApronData() {
-            apronState = {};
-            globalData.partidas.forEach(v => {
-                if(v.posicion && v.posicion !== "---") {
-                    let cleanPos = v.posicion.padStart(2, '0');
-                    if(!apronState[cleanPos]) apronState[cleanPos] = [];
-                    apronState[cleanPos].push({ ...v, type: 'dep', id: v.vuelo+'_D' });
-                }
-            });
-            globalData.arribos.forEach(v => {
-                if(v.posicion && v.posicion !== "---") {
-                    let cleanPos = v.posicion.padStart(2, '0');
-                    if(!apronState[cleanPos]) apronState[cleanPos] = [];
-                    apronState[cleanPos].push({ ...v, type: 'arr', id: v.vuelo+'_A' });
-                }
-            });
-        }
-
-        function renderApronFromState() {
-            document.querySelectorAll('.stand').forEach(s => {
-                s.className = 'stand';
-                const p = parseInt(s.id.split('-')[1]);
-                if ((p >= 1 && p <= 9) || (p >= 18 && p <= 21)) s.classList.add('hot-zone');
-                s.querySelector('.stand-flight').innerText = '';
-                s.querySelector('.multi-indicator').innerText = '';
-                s.onclick = null;
-            });
-
-            Object.keys(apronState).forEach(pos => {
-                const standDiv = document.getElementById(`stand-${pos}`);
-                if(standDiv) {
-                    const vuelosEnStand = apronState[pos];
-                    const totalVuelos = vuelosEnStand.length;
-                    const vueloAMostrar = vuelosEnStand[carouselIndex % totalVuelos];
-                    
-                    if(vueloAMostrar.type === 'dep') standDiv.classList.add('occupied-dep');
-                    else standDiv.classList.add('occupied-arr');
-                    
-                    standDiv.querySelector('.stand-flight').innerText = vueloAMostrar.vuelo.split(' ')[1] || vueloAMostrar.vuelo;
-                    
-                    if(totalVuelos > 1) {
-                        standDiv.querySelector('.multi-indicator').innerText = '••';
-                    }
-
-                    const algunoPinned = vuelosEnStand.some(f => pinnedFlights.has(f.id));
-                    if(algunoPinned) standDiv.classList.add('is-pinned');
-                    
-                    standDiv.onclick = function() { toggleHighlight(vueloAMostrar.id); };
-                }
-            });
-        }
-
-        function renderTable(lista, tableId, type) {
-            const tbody = document.querySelector(`#${tableId} tbody`);
-            tbody.innerHTML = '';
-            if (!lista) return;
-            
-            lista.forEach(v => {
-                const vueloId = v.vuelo + (type === 'gate' ? '_D' : '_A');
-                const isSelected = pinnedFlights.has(vueloId);
-                let rowClass = '';
-
-                if (isSelected) {
-                    if (/DEM|CAN|DLY/.test(v.estado)) rowClass = 'row-selected-alert';
-                    else rowClass = 'row-selected';
-                } 
-                else {
-                    const lugar = v.lugar ? v.lugar.toUpperCase() : "";
-                    const vuelo = v.vuelo ? v.vuelo.toUpperCase() : "";
-                    const posNum = parseInt(v.posicion);
-                    
-                    const esHotZone = (!isNaN(posNum) && (
-                        (posNum >= 1 && posNum <= 9) || 
-                        (posNum >= 18 && posNum <= 21)
-                    ));
-
-                    const esGRU = (lugar === "GRU");
-                    const esIGR_FO = (lugar === "IGR" && vuelo.startsWith("FO"));
-                    
-                    if (esHotZone) {
-                        rowClass = 'row-auto-red';
-                    } else if (esGRU || esIGR_FO) {
-                        rowClass = 'row-auto-violet';
-                    }
-                }
+        class MapController {
+            constructor(dataManager) {
+                this.dataManager = dataManager;
+                this.map = null;
+                this.imageOverlay = null;
+                this.markersLayer = null;
+                this.currentView = 'radar';
+            }
+            init() {
+                const imgW = 2000; const imgH = 1000; const bounds = [[0, 0], [imgH, imgW]];
+                this.map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2, zoomControl: false, attributionControl: false });
+                this.imageOverlay = L.imageOverlay('plano.jpg', bounds).addTo(this.map);
+                this.map.fitBounds(bounds);
+                this.markersLayer = L.layerGroup().addTo(this.map);
                 
-                const tr = document.createElement('tr');
-                tr.className = rowClass;
-                tr.onclick = () => toggleHighlight(vueloId);
-                tr.innerHTML = generateRowHTML(v, type);
-                tbody.appendChild(tr);
-            });
-        }
+                this.map.on('zoomend', () => {
+                    const zoom = this.map.getZoom();
+                    const container = this.map.getContainer();
+                    container.classList.remove('zoom-low', 'zoom-mid', 'zoom-high');
+                    if(zoom < -1) container.classList.add('zoom-low');
+                    else if(zoom < 1) container.classList.add('zoom-mid');
+                    else container.classList.add('zoom-high');
+                });
+                this.map.fire('zoomend');
 
-        function renderWatchlist() {
-            const section = document.getElementById('watchlist-section');
-            const depC = document.getElementById('wl-dep-container');
-            const arrC = document.getElementById('wl-arr-container');
-            const tDep = document.querySelector('#tbl-wl-dep tbody');
-            const tArr = document.querySelector('#tbl-wl-arr tbody');
-            tDep.innerHTML = ''; tArr.innerHTML = '';
-
-            const trackDep = globalData.partidas.map(v=>({...v,type:'gate',id:v.vuelo+'_D'})).filter(f=>pinnedFlights.has(f.id));
-            const trackArr = globalData.arribos.map(v=>({...v,type:'belt',id:v.vuelo+'_A'})).filter(f=>pinnedFlights.has(f.id));
-
-            if(trackDep.length===0 && trackArr.length===0) { section.style.display='none'; return; }
-            else section.style.display='block';
-
-            if(trackDep.length>0) { 
-                depC.classList.remove('empty'); 
-                trackDep.forEach(v => { 
-                    const tr=document.createElement('tr'); tr.onclick=()=>toggleHighlight(v.id); 
-                    tr.innerHTML=generateRowHTML(v,'gate'); tDep.appendChild(tr); 
-                }); 
-            } else depC.classList.add('empty');
-
-            if(trackArr.length>0) { 
-                arrC.classList.remove('empty'); 
-                trackArr.forEach(v => { 
-                    const tr=document.createElement('tr'); tr.onclick=()=>toggleHighlight(v.id); 
-                    tr.innerHTML=generateRowHTML(v,'belt'); tArr.appendChild(tr); 
-                }); 
-            } else arrC.classList.add('empty');
-        }
-
-        function generateRowHTML(v, type) {
-            let stText = v.estado || ""; 
-            let estadoUpper = stText.toUpperCase();
-            let stClass = "st-ok";
-
-            // PRIORIDAD DE ESTADOS
-            if (/DEM|CAN|DLY/.test(estadoUpper)) {
-                stClass = "st-alert-flash";
-            } 
-            else if (type === 'gate' && checkPreBoarding(v)) {
-                stClass = "st-pre"; 
-                stText = "PRE";
+                this.map.on('click', (e) => {
+                    if (this.dataManager.simMode) {
+                        const coordCode = `"${prompt("Posición:")}": [${e.latlng.lat.toFixed(0)}, ${e.latlng.lng.toFixed(0)}],`;
+                        console.log(coordCode); alert("Copia: " + coordCode);
+                    }
+                });
+                this.updateButtonText();
             }
-            else if (estadoUpper.includes("PRE")) {
-                stClass = "st-pre";
+            updateMap() {
+                if (!this.map || !this.markersLayer) return;
+                this.markersLayer.clearLayers();
+                const allFlights = this.dataManager.getAllFlights();
+                const positionMap = this.groupFlightsByPosition(allFlights);
+                for (const [pos, vuelos] of Object.entries(positionMap)) {
+                    this.addMarker(pos, vuelos);
+                }
             }
-
-            let extra = (v.dato_extra && v.dato_extra!=="---") ? (type==='gate'?`<span class="badge b-gate">${v.dato_extra}</span>`:`<span class="badge b-belt">C${v.dato_extra}</span>`) : "";
-            let pos = (v.posicion && v.posicion!=="---") ? `<span class="badge b-pos">${v.posicion}</span>` : "";
-            let mat = (v.matricula && v.matricula!=="---") ? `<span class="mono tail-number">${v.matricula}</span>` : "";
-            
-            let displayTime2 = ""; 
-            if (v.hora_real) displayTime2 = `<span class="mono time-real">${v.hora_real}</span>`; 
-            else if (v.hora_est) displayTime2 = `<span class="mono time-est">${v.hora_est}</span>`; 
-            else displayTime2 = `<span class="mono" style="color:#444">--:--</span>`;
-            
-            return `<td class="mono bold">${v.vuelo}</td><td class="font-bold">${v.lugar}</td><td class="mono">${v.hora_prog}</td><td>${displayTime2}</td><td>${mat}</td><td>${pos}</td><td>${extra}</td><td><span class="st-pill ${stClass}">${stText}</span></td>`;
+            groupFlightsByPosition(flights) {
+                const posMap = {};
+                flights.forEach(v => {
+                    if (!v.posicion || v.posicion === "---") return;
+                    const p = Utils.padPosition(v.posicion);
+                    if (!posMap[p]) posMap[p] = [];
+                    posMap[p].push(v);
+                });
+                return posMap;
+            }
+            addMarker(pos, vuelos) {
+                if (!CONFIG.COORDENADAS_POSICIONES[pos]) return;
+                const coords = CONFIG.COORDENADAS_POSICIONES[pos];
+                const index = window.appController.carouselIndex % vuelos.length;
+                const vueloPrincipal = vuelos[index];
+                let className = 'custom-dot';
+                const isSelected = vuelos.some(v => this.dataManager.isPinned(v.id));
+                if (isSelected) className += ' is-selected';
+                if (vuelos.length > 1) className += ' conflict';
+                else if (vueloPrincipal.type === 'dep') className += ' dep';
+                else className += ' arr';
+                const dotIcon = L.divIcon({ className: 'none', html: `<div class="${className}"></div>`, iconSize: [16, 16], iconAnchor: [8, 8] });
+                
+                // === ZOOM INTELIGENTE Y TOOLTIP MULTI-VUELO ===
+                const tooltipText = vuelos.map(v => v.vuelo).join('<br>');
+                
+                const marker = L.marker(coords, { icon: dotIcon })
+                    .bindTooltip(tooltipText, { permanent: true, direction: 'top', offset: [0, -10], className: 'leaflet-tooltip-flight' })
+                    .addTo(this.markersLayer)
+                    .on('click', () => { if(vuelos.length > 0) window.appController.selectFlight(vuelos[0].id); });
+            }
+            toggleView() {
+                const planoDiv = document.getElementById('view-plano');
+                const radarDiv = document.getElementById('view-radar');
+                if (this.currentView === 'plano') {
+                    planoDiv.style.display = 'none'; radarDiv.style.display = 'block'; this.currentView = 'radar';
+                } else {
+                    radarDiv.style.display = 'none'; planoDiv.style.display = 'block'; this.currentView = 'plano';
+                    if (this.map) this.map.invalidateSize();
+                }
+                this.updateButtonText();
+            }
+            updateButtonText() {
+                const btn = document.getElementById('btn-toggle-view');
+                if(btn) btn.innerText = (this.currentView === 'radar') ? "🗺️ VER PLATAFORMA" : "📡 VER RADAR";
+            }
+            reset() {
+                if (this.currentView === 'plano') {
+                    if (this.map && this.imageOverlay) this.map.fitBounds(this.imageOverlay.getBounds());
+                } else {
+                    document.getElementById('radar-frame').src = "https://globe.adsbexchange.com/?lat=-34.57&lon=-58.42&zoom=9&hideSidebar&hideButtons&enableLabels";
+                }
+            }
+            syncRadarWithFlight(flightId) {
+                if (this.currentView !== 'radar') return;
+                const flight = this.dataManager.getFlightById(flightId);
+                if (!flight || !flight.matricula || flight.matricula === "---") return;
+                document.getElementById('radar-frame').src = `https://globe.adsbexchange.com/?reg=${flight.matricula}&zoom=14&hideSidebar&hideButtons&enableLabels`;
+            }
         }
 
-        cargarDatos();
-        setInterval(cargarDatos, 10000); 
+        class AppController {
+            constructor() {
+                this.dataManager = new DataManager();
+                this.uiManager = new UIManager(this.dataManager);
+                this.mapController = new MapController(this.dataManager);
+                this.updateInterval = null;
+                this.carouselIndex = 0; 
+            }
+            async init() {
+                this.mapController.init();
+                await this.update();
+                this.startAutoUpdate();
+                this.startClock();
+                this.startCarousel(); 
+            }
+            async update() {
+                const success = await this.dataManager.fetchData();
+                if (success) this.refreshUI();
+            }
+            refreshUI() {
+                this.uiManager.updateHeaderStats();
+                this.uiManager.renderTables();
+                this.uiManager.renderApron();
+                this.mapController.updateMap();
+            }
+            selectFlight(flightId) {
+                if (!flightId) return;
+                this.dataManager.pinFlight(flightId);
+                this.mapController.syncRadarWithFlight(flightId);
+                this.refreshUI();
+            }
+            unpinFlight(flightId) {
+                if (!flightId) return;
+                this.dataManager.unpinFlight(flightId);
+                this.refreshUI();
+            }
+            toggleHighlight(flightId) { this.selectFlight(flightId); }
+            toggleSim() {
+                const btn = document.getElementById('sim-btn');
+                if (!this.dataManager.simMode) {
+                    this.dataManager.enableSimMode();
+                    this.stopAutoUpdate();
+                    btn.classList.add('active');
+                    this.refreshUI();
+                    alert("MODO CALIBRACIÓN ACTIVADO");
+                } else {
+                    this.dataManager.disableSimMode();
+                    btn.classList.remove('active');
+                    this.startAutoUpdate();
+                    this.update();
+                }
+            }
+            toggleMapView() { this.mapController.toggleView(); }
+            resetMap() { this.mapController.reset(); }
+            startAutoUpdate() {
+                if (this.updateInterval) clearInterval(this.updateInterval);
+                this.updateInterval = setInterval(() => { this.update(); }, CONFIG.UPDATE_INTERVAL);
+            }
+            stopAutoUpdate() {
+                if (this.updateInterval) { clearInterval(this.updateInterval); this.updateInterval = null; }
+            }
+            startClock() {
+                Utils.updateClock();
+                setInterval(() => { Utils.updateClock(); }, 1000);
+            }
+            startCarousel() {
+                setInterval(() => {
+                    this.carouselIndex++;
+                    this.refreshUI(); // Re-render to show next flight in stack
+                }, CONFIG.CAROUSEL_INTERVAL);
+            }
+        }
+
+        window.appController = new AppController();
+        window.addEventListener('DOMContentLoaded', () => { window.appController.init(); });
     </script>
 </body>
 </html>
