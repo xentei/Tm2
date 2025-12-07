@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AEP OPS CONTROL | v53 DATA ADAPTER</title>
+    <title>AEP OPS CONTROL | v55 HOSTED MAP</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     
@@ -19,6 +19,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
+        /* HEADER */
         header { display: flex; justify-content: space-between; align-items: center; padding: 5px 20px; background: #000; border-bottom: 2px solid var(--border-color); flex-shrink: 0; height: 50px; }
         .brand { font-family: 'JetBrains Mono'; font-weight: 900; font-size: 18px; text-transform: uppercase; color: #fff; letter-spacing: 1px; }
         .brand span { color: var(--accent-dep); }
@@ -33,20 +34,14 @@
         .val-pre { color: var(--pre-color); text-shadow: 0 0 5px rgba(204, 255, 0, 0.4); }
         .clock { font-family: 'JetBrains Mono'; font-size: 20px; font-weight: 700; color: #fff; }
 
+        /* PLATAFORMA */
         #apron-container { padding: 10px 20px; border-bottom: 1px solid var(--border-color); background: #080808; flex-shrink: 0; }
         .apron-header { font-size: 10px; color: #666; margin-bottom: 5px; text-transform: uppercase; font-weight: 800; font-family: 'JetBrains Mono'; letter-spacing: 1px; }
         .apron-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 5px; }
-        
         .stand { height: 35px; background: #1a1a1a; border: 1px solid #333; border-radius: 3px; position: relative; display: flex; align-items: center; justify-content: center; transition: all 0.2s; cursor: default; }
         .stand-num { position: absolute; top: 1px; left: 3px; font-size: 9px; color: #fff; font-family: 'JetBrains Mono'; font-weight: 900; z-index: 5; text-shadow: 0 0 2px #000; }
-        
-        /* Animación suave para el cambio de vuelo */
-        .stand-flight { 
-            font-family: 'JetBrains Mono'; font-weight: 700; font-size: 11px; color: #fff; z-index: 2; letter-spacing: -0.5px; 
-            animation: fade-text 0.5s ease-in-out;
-        }
+        .stand-flight { font-family: 'JetBrains Mono'; font-weight: 700; font-size: 11px; color: #fff; z-index: 2; letter-spacing: -0.5px; animation: fade-text 0.5s ease-in-out; }
         @keyframes fade-text { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
-
         .multi-indicator { position: absolute; bottom: 1px; right: 2px; font-size: 8px; color: #fff; font-weight: 900; letter-spacing: -1px; }
         .stand.occupied-dep { border-color: var(--accent-dep); background: rgba(156, 39, 176, 0.15); cursor: pointer; }
         .stand.occupied-dep .stand-flight { color: var(--accent-dep); }
@@ -56,6 +51,7 @@
         .stand.is-pinned .stand-flight { color: #fff !important; text-shadow: 0 0 5px #fff; }
         .stand.hot-zone { border-bottom: 2px solid var(--alert-color); }
 
+        /* LAYOUT */
         .content-split { flex: 1; display: flex; overflow: hidden; padding: 10px 20px; gap: 15px; }
         .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex: 3; min-width: 600px; height: 100%; min-height: 0; }
         #map-container { flex: 1; border: 1px solid var(--border-color); background: #050505; border-radius: 4px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
@@ -67,27 +63,24 @@
         .table-container::-webkit-scrollbar { width: 8px; }
         .table-container::-webkit-scrollbar-track { background: #0a0a0a; }
         .table-container::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-        .table-container::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        /* VISTAS DE MAPA (DEFAULT RADAR) */
+        /* VISTAS DE MAPA */
         #view-plano { width: 100%; height: 100%; position: absolute; top:0; left:0; display: none; }
         #view-radar { width: 100%; height: 100%; position: absolute; top:0; left:0; display: block; }
         #view-radar iframe { width: 100%; height: 100%; border: none; }
-        
         .map-btn-group { position: absolute; top: 10px; right: 10px; z-index: 9999; display: flex; gap: 5px; }
         .map-btn { background: rgba(20, 20, 20, 0.9); color: #fff; border: 1px solid #555; padding: 4px 8px; font-family: 'JetBrains Mono'; font-size: 10px; cursor: pointer; border-radius: 3px; transition: all 0.2s; }
         .map-btn:hover { background: #333; border-color: #fff; }
 
+        /* FILTRO PARA EL PLANO .PNG */
         .leaflet-image-layer { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(1.3); }
-        
-        /* PUNTOS EN MAPA */
+
         .custom-dot { width: 16px; height: 16px; border-radius: 50%; background-color: #222; border: 2px solid #fff; box-shadow: 0 0 5px rgba(0, 0, 0, 0.8); transition: all 0.3s; cursor: pointer; }
         .custom-dot.dep { background-color: var(--accent-dep); box-shadow: 0 0 10px var(--accent-dep); animation: pulse 3s infinite; }
         .custom-dot.arr { background-color: var(--accent-arr); box-shadow: 0 0 10px var(--accent-arr); animation: pulse 3s infinite; }
         .custom-dot.conflict { background-color: var(--alert-color); box-shadow: 0 0 15px var(--alert-color); animation: flash 1s infinite; }
         .custom-dot.is-selected { transform: scale(1.5) !important; border-color: #fff !important; background-color: #fff !important; box-shadow: 0 0 20px #fff !important; z-index: 999 !important; }
         
-        /* ZOOM TEXT */
         .leaflet-tooltip-flight { 
             background: rgba(0, 0, 0, 0.85); border: 1px solid #666; color: #fff; 
             font-family: 'JetBrains Mono'; font-weight: bold; 
@@ -203,11 +196,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script>
-        // CONFIGURACIÓN GLOBAL
         const CONFIG = {
             API_URL: '/datos-limpios',
             UPDATE_INTERVAL: 10000,
-            CAROUSEL_INTERVAL: 2000, // 2 SEGUNDOS
+            CAROUSEL_INTERVAL: 2000, 
             PREBOARD_MIN: 30,
             PREBOARD_MAX: 90,
             AEROPUERTOS_INT: ["GRU", "GIG", "MVD", "SCL", "LIM", "ASU", "BOG", "FLN", "PDP", "VVI", "CWB", "POA", "MIA", "MAD"],
@@ -238,11 +230,7 @@
                 if (this.isPreBoardingStatus(flight.estado)) return true;
                 const timeStr = flight.hora_est || flight.hora_prog;
                 if (!timeStr || !timeStr.includes(':')) return false;
-                const now = new Date(); 
-                const parts = timeStr.split(':');
-                if(parts.length < 2) return false;
-                const h = parseInt(parts[0]);
-                const m = parseInt(parts[1]);
+                const now = new Date(); const [h, m] = timeStr.split(':').map(Number);
                 const flightTime = new Date(); flightTime.setHours(h, m, 0);
                 let diff = (flightTime - now) / 60000;
                 if (diff < -720) diff += 1440; if (diff > 720) diff -= 1440;
@@ -265,36 +253,34 @@
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const rawData = await res.json();
                     
-                    // === ADAPTADOR DE DATOS ===
                     const normalize = (f, type) => {
-                        let hProg = f.STA || f.STD || "";
+                        let hProg = f.STA || f.STD || f.hora_prog || "";
                         if(hProg.includes(" ")) hProg = hProg.split(" ")[1];
-                        
-                        let hEst = f.ETA || f.ETD || "";
+                        let hEst = f.ETA || f.ETD || f.hora_est || "";
                         if(hEst.includes(" ")) hEst = hEst.split(" ")[1];
-                        
-                        let hReal = f.ATA || f.ATD || "";
+                        let hReal = f.ATA || f.ATD || f.hora_real || "";
                         if(hReal.includes(" ")) hReal = hReal.split(" ")[1];
-
-                        let airline = f["Cia."] || f.Cia || "";
-                        let num = f.Vuelo || "";
-                        let fullFlight = (airline + " " + num).trim();
-                        let pos = f.Posicion || "---";
+                        
+                        let fullFlight = f.vuelo || "";
+                        if (!fullFlight && (f["Cia."] || f.Cia) && f.Vuelo) {
+                             fullFlight = ((f["Cia."] || f.Cia) + " " + f.Vuelo).trim();
+                        }
+                        
+                        let pos = f.Posicion || f.posicion || "---";
 
                         return {
                             vuelo: fullFlight,
-                            lugar: type === 'dep' ? (f.Destino || "---") : (f.Origen || "---"),
+                            lugar: type === 'dep' ? (f.Destino || f.lugar || "---") : (f.Origen || f.lugar || "---"),
                             hora_prog: hProg,
                             hora_est: hEst,
                             hora_real: hReal,
-                            matricula: f.Matricula || "---",
+                            matricula: f.Matricula || f.matricula || "---",
                             posicion: pos,
-                            dato_extra: type === 'dep' ? (f.Puerta || "") : (f.Cinta || ""),
-                            estado: f.Remark || ""
+                            dato_extra: type === 'dep' ? (f.Puerta || f.dato_extra || "") : (f.Cinta || f.dato_extra || ""),
+                            estado: f.Remark || f.estado || ""
                         };
                     };
 
-                    // Intenta usar datos formateados si existen, si no, usa el adaptador
                     if (rawData.partidas && rawData.partidas.length > 0 && rawData.partidas[0].vuelo) {
                          this.data = { partidas: rawData.partidas, arribos: rawData.arribos };
                     } else {
@@ -510,7 +496,7 @@
             init() {
                 const imgW = 2000; const imgH = 1000; const bounds = [[0, 0], [imgH, imgW]];
                 this.map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2, zoomControl: false, attributionControl: false });
-                this.imageOverlay = L.imageOverlay('plano.jpg', bounds).addTo(this.map);
+                this.imageOverlay = L.imageOverlay('https://i.ibb.co/w2VfWrC/plano.png', bounds).addTo(this.map);
                 this.map.fitBounds(bounds);
                 this.markersLayer = L.layerGroup().addTo(this.map);
                 
@@ -564,7 +550,6 @@
                 else className += ' arr';
                 const dotIcon = L.divIcon({ className: 'none', html: `<div class="${className}"></div>`, iconSize: [16, 16], iconAnchor: [8, 8] });
                 
-                // === ZOOM INTELIGENTE Y TOOLTIP MULTI-VUELO ===
                 const tooltipText = vuelos.map(v => v.vuelo).join('<br>');
                 
                 const marker = L.marker(coords, { icon: dotIcon })
