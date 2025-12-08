@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AEP OPS CONTROL | v70 COMPLETE</title>
+    <title>AEP OPS CONTROL | v71 COLLAPSIBLE</title>
     <link rel="icon" type="image/png" href="https://i.ibb.co/jvvJCPKY/favicon-32x32.png">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -120,6 +120,7 @@
             border-bottom: 1px solid var(--border-color);
             align-items: center;
             flex-shrink: 0;
+            flex-wrap: wrap;
         }
         .tool-btn {
             background: #1a1a1a;
@@ -249,19 +250,27 @@
             display: grid; 
             grid-template-columns: 1fr 1fr; 
             gap: 15px; 
-            flex: 3; 
-            min-width: 600px; 
+            flex: 1;
             height: 100%; 
-            min-height: 0; 
+            min-height: 0;
+            transition: all 0.3s ease;
         }
         
-        /* HISTORY SIDEBAR */
+        /* HISTORY SIDEBAR - COLAPSABLE */
         .history-sidebar {
-            width: 280px;
+            width: 0;
+            overflow: hidden;
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
             gap: 15px;
+            transition: width 0.3s ease, opacity 0.3s ease;
+            opacity: 0;
+        }
+        
+        .history-sidebar.visible {
+            width: 280px;
+            opacity: 1;
         }
         
         .history-container {
@@ -348,17 +357,27 @@
             color: #00ff88;
         }
 
+        /* MAP CONTAINER - COLAPSABLE */
         #map-container { 
-            flex: 1; 
+            width: 0;
+            overflow: hidden;
             border: 1px solid var(--border-color); 
             background: #050505; 
             border-radius: 4px; 
-            overflow: hidden; 
             position: relative; 
             display: flex; 
             align-items: center; 
-            justify-content: center; 
+            justify-content: center;
+            transition: width 0.3s ease, opacity 0.3s ease;
+            opacity: 0;
+            flex-shrink: 0;
         }
+        
+        #map-container.visible {
+            width: 600px;
+            opacity: 1;
+        }
+        
         #map-container:fullscreen { 
             width: 100vw; 
             height: 100vh; 
@@ -645,10 +664,6 @@
         }
         
         /* RESPONSIVE */
-        @media (max-width: 1600px) {
-            .history-sidebar { display: none; }
-        }
-        
         @media (max-width: 1400px) {
             .main-grid { grid-template-columns: 1fr; }
         }
@@ -696,6 +711,13 @@
     </header>
 
     <div class="toolbar">
+        <button class="tool-btn" id="btn-toggle-map" onclick="toggleMapPanel()" title="Mostrar/Ocultar Mapa">
+            🗺️ MAPA
+        </button>
+        <button class="tool-btn" id="btn-toggle-history" onclick="toggleHistoryPanel()" title="Mostrar/Ocultar Historial">
+            📜 HISTORIAL
+        </button>
+        <div style="border-left: 1px solid #333; height: 20px; margin: 0 5px;"></div>
         <button class="tool-btn" onclick="toggleHighContrast()" title="Alternar contraste alto">
             🌓 CONTRASTE
         </button>
@@ -768,7 +790,7 @@
             </div>
         </div>
 
-        <div class="history-sidebar">
+        <div class="history-sidebar" id="history-sidebar">
             <div class="panel">
                 <div class="panel-header ph-history">
                     <span>📜 HISTORIAL</span>
@@ -807,7 +829,7 @@
             <div>DATA: <span id="data-ts">...</span></div>
         </div>
         <div class="footer-section">
-            <div>v70 COMPLETE | Historial: <span id="history-count">0</span> cambios</div>
+            <div>v71 COLLAPSIBLE | Historial: <span id="history-count">0</span> cambios</div>
         </div>
     </footer>
 
@@ -1444,7 +1466,6 @@
                 
                 container.innerHTML = html;
                 
-                // Actualizar contador
                 document.getElementById('history-count').innerText = history.getCount();
             }
 
@@ -1640,7 +1661,9 @@
 
             updateButtonText() {
                 const btn = document.getElementById('btn-toggle-view');
-                btn.innerText = (this.currentView === 'radar') ? "🗺️ VER PLATAFORMA" : "📡 VER RADAR";
+                if (btn) {
+                    btn.innerText = (this.currentView === 'radar') ? "🗺️ VER PLATAFORMA" : "📡 VER RADAR";
+                }
             }
 
             reset() {
@@ -1696,7 +1719,7 @@
             }
 
             async init() {
-                console.log('🚀 Iniciando AEP OPS CONTROL v70 COMPLETE...');
+                console.log('🚀 Iniciando AEP OPS CONTROL v71 COLLAPSIBLE...');
                 
                 this.mapManager = new MapManager(this.config, this.dataManager, this.pinManager);
                 this.mapManager.init();
@@ -1716,7 +1739,6 @@
                 try {
                     await this.dataManager.fetchData();
                     
-                    // Enriquecer datos
                     this.dataManager.data.partidas = this.dataManager.data.partidas.map(f => ({
                         ...f,
                         _state: this.dataManager.getFlightState(f)
@@ -1726,13 +1748,8 @@
                         _state: this.dataManager.getFlightState(f)
                     }));
 
-                    // DETECTAR CAMBIOS DE ESTADO Y REGISTRAR EN HISTORIAL
                     this.detectStateChanges();
-
-                    // TOMAR SNAPSHOT PARA ANÁLISIS DE TENDENCIAS
                     this.trendAnalyzer.takeSnapshot(this.dataManager.data);
-                    
-                    // ACTUALIZAR INDICADORES DE TENDENCIA
                     this.updateTrendIndicators();
 
                     const ts = document.getElementById('data-ts');
@@ -1756,10 +1773,8 @@
                         const oldState = this.previousStates.get(flightId);
                         
                         if (oldState !== currentState && currentState) {
-                            // REGISTRAR CAMBIO EN HISTORIAL
                             this.stateHistory.addChange(flight, oldState, currentState);
                             
-                            // ALERTA SONORA SI ES CRÍTICO
                             if (currentState === "DEM" && oldState !== "DEM") {
                                 this.alertSystem.playAlert('warning');
                             } else if (currentState.toUpperCase().includes("CAN")) {
@@ -1773,21 +1788,18 @@
             }
 
             updateTrendIndicators() {
-                // Tendencia de demoras
                 const delayTrend = this.trendAnalyzer.getTrendIcon('totalDelays');
                 const delayColor = this.trendAnalyzer.getTrendColor('totalDelays');
                 const elDelayTrend = document.getElementById('trend-delays');
                 elDelayTrend.innerHTML = delayTrend;
                 elDelayTrend.style.color = delayColor;
                 
-                // Tendencia de posiciones calientes
                 const hotTrend = this.trendAnalyzer.getTrendIcon('hotPositions');
                 const hotColor = this.trendAnalyzer.getTrendColor('hotPositions');
                 const elHotTrend = document.getElementById('trend-hot');
                 elHotTrend.innerHTML = hotTrend;
                 elHotTrend.style.color = hotColor;
                 
-                // Carga de tráfico
                 const load = this.trendAnalyzer.getTrafficLoad();
                 const loadColor = load > 80 ? '#ff3366' : load > 60 ? '#ffb300' : '#00ff88';
                 const elLoad = document.getElementById('traffic-load');
@@ -1832,7 +1844,6 @@
                     clearInterval(this.updateInterval);
                     btn.classList.add('active');
                     
-                    // Datos de prueba con más variedad
                     this.dataManager.data = {
                         partidas: [
                             { vuelo: "FO 5000", lugar: "MIA", hora_prog: "10:00", matricula: "LV-SIM", posicion: "01", estado: "PRE", dato_extra: "12", _tipo: 'dep' },
@@ -1845,7 +1856,6 @@
                         ]
                     };
                     
-                    // Enriquecer
                     this.dataManager.data.partidas = this.dataManager.data.partidas.map(f => ({
                         ...f,
                         _state: this.dataManager.getFlightState(f)
@@ -1855,7 +1865,6 @@
                         _state: this.dataManager.getFlightState(f)
                     }));
                     
-                    // Simular cambio de estado para historial
                     setTimeout(() => {
                         if (this.simMode) {
                             this.stateHistory.addChange(
@@ -1933,6 +1942,43 @@
             }
         }
 
+        // =====================================================
+        // TOGGLE PANELS (COLAPSABLES)
+        // =====================================================
+        function toggleMapPanel() {
+            const container = document.getElementById('map-container');
+            const btn = document.getElementById('btn-toggle-map');
+            const isVisible = container.classList.contains('visible');
+            
+            if (isVisible) {
+                container.classList.remove('visible');
+                btn.classList.remove('active');
+            } else {
+                container.classList.add('visible');
+                btn.classList.add('active');
+                // Resize del mapa después de mostrar
+                setTimeout(() => {
+                    if (APP.mapManager.map && APP.mapManager.currentView === 'plano') {
+                        APP.mapManager.map.invalidateSize();
+                    }
+                }, 350);
+            }
+        }
+
+        function toggleHistoryPanel() {
+            const sidebar = document.getElementById('history-sidebar');
+            const btn = document.getElementById('btn-toggle-history');
+            const isVisible = sidebar.classList.contains('visible');
+            
+            if (isVisible) {
+                sidebar.classList.remove('visible');
+                btn.classList.remove('active');
+            } else {
+                sidebar.classList.add('visible');
+                btn.classList.add('active');
+            }
+        }
+
         function filterFlights(query) {
             const normalized = query.toUpperCase().trim();
             
@@ -1956,7 +2002,6 @@
                 (f.matricula && f.matricula.toUpperCase().includes(normalized))
             );
 
-            // Enriquecer filtrados
             APP.dataManager.data.partidas = APP.dataManager.data.partidas.map(f => ({
                 ...f,
                 _state: APP.dataManager.getFlightState(f)
