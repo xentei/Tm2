@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AEP OPS CONTROL | v55 HOSTED MAP</title>
+    <title>AEP OPS CONTROL | v65 STABLE</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     
     <style>
+        /* ERROR OVERLAY */
+        #error-box { display: none; position: fixed; top: 0; left: 0; width: 100%; background: #900; color: #fff; padding: 20px; z-index: 10000; font-family: monospace; }
+
         :root {
             --bg-color: #050505; --panel-bg: #101010; --border-color: #333;
             --accent-dep: #9c27b0; --accent-arr: #ff5722; 
             --alert-color: #ff003c; --ok-color: #00ff88; --pre-color: #ccff00; --highlight-border: #ffd700;
+            --consult-color: #ffb300;
             --text-main: #ffffff; --text-dim: #888;
             --auto-rule-violet-bg: rgba(208, 0, 255, 0.15); --auto-rule-violet-border: #d000ff;
             --auto-rule-red-bg: rgba(255, 60, 60, 0.15); --auto-rule-red-border: #ff3c3c;
@@ -38,10 +42,13 @@
         #apron-container { padding: 10px 20px; border-bottom: 1px solid var(--border-color); background: #080808; flex-shrink: 0; }
         .apron-header { font-size: 10px; color: #666; margin-bottom: 5px; text-transform: uppercase; font-weight: 800; font-family: 'JetBrains Mono'; letter-spacing: 1px; }
         .apron-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 5px; }
+        
         .stand { height: 35px; background: #1a1a1a; border: 1px solid #333; border-radius: 3px; position: relative; display: flex; align-items: center; justify-content: center; transition: all 0.2s; cursor: default; }
         .stand-num { position: absolute; top: 1px; left: 3px; font-size: 9px; color: #fff; font-family: 'JetBrains Mono'; font-weight: 900; z-index: 5; text-shadow: 0 0 2px #000; }
+        
         .stand-flight { font-family: 'JetBrains Mono'; font-weight: 700; font-size: 11px; color: #fff; z-index: 2; letter-spacing: -0.5px; animation: fade-text 0.5s ease-in-out; }
         @keyframes fade-text { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+
         .multi-indicator { position: absolute; bottom: 1px; right: 2px; font-size: 8px; color: #fff; font-weight: 900; letter-spacing: -1px; }
         .stand.occupied-dep { border-color: var(--accent-dep); background: rgba(156, 39, 176, 0.15); cursor: pointer; }
         .stand.occupied-dep .stand-flight { color: var(--accent-dep); }
@@ -51,10 +58,15 @@
         .stand.is-pinned .stand-flight { color: #fff !important; text-shadow: 0 0 5px #fff; }
         .stand.hot-zone { border-bottom: 2px solid var(--alert-color); }
 
-        /* LAYOUT */
         .content-split { flex: 1; display: flex; overflow: hidden; padding: 10px 20px; gap: 15px; }
         .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex: 3; min-width: 600px; height: 100%; min-height: 0; }
+        
+        /* MAP CONTAINER */
         #map-container { flex: 1; border: 1px solid var(--border-color); background: #050505; border-radius: 4px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
+        /* FULLSCREEN */
+        #map-container:fullscreen { width: 100vw; height: 100vh; border: none; border-radius: 0; background: #000; }
+        #map-container:-webkit-full-screen { width: 100vw; height: 100vh; border: none; border-radius: 0; background: #000; }
+
         .panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 4px; display: flex; flex-direction: column; overflow: hidden; height: 100%; }
         .panel-header { padding: 8px 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; background: #151515; }
         .ph-dep { color: var(--accent-dep); border-top: 2px solid var(--accent-dep); }
@@ -64,29 +76,24 @@
         .table-container::-webkit-scrollbar-track { background: #0a0a0a; }
         .table-container::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
 
-        /* VISTAS DE MAPA */
+        /* VISTAS DE MAPA (DEFAULT RADAR) */
         #view-plano { width: 100%; height: 100%; position: absolute; top:0; left:0; display: none; }
         #view-radar { width: 100%; height: 100%; position: absolute; top:0; left:0; display: block; }
         #view-radar iframe { width: 100%; height: 100%; border: none; }
+        
         .map-btn-group { position: absolute; top: 10px; right: 10px; z-index: 9999; display: flex; gap: 5px; }
         .map-btn { background: rgba(20, 20, 20, 0.9); color: #fff; border: 1px solid #555; padding: 4px 8px; font-family: 'JetBrains Mono'; font-size: 10px; cursor: pointer; border-radius: 3px; transition: all 0.2s; }
         .map-btn:hover { background: #333; border-color: #fff; }
 
-        /* FILTRO PARA EL PLANO .PNG */
         .leaflet-image-layer { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(1.3); }
-
+        
         .custom-dot { width: 16px; height: 16px; border-radius: 50%; background-color: #222; border: 2px solid #fff; box-shadow: 0 0 5px rgba(0, 0, 0, 0.8); transition: all 0.3s; cursor: pointer; }
         .custom-dot.dep { background-color: var(--accent-dep); box-shadow: 0 0 10px var(--accent-dep); animation: pulse 3s infinite; }
         .custom-dot.arr { background-color: var(--accent-arr); box-shadow: 0 0 10px var(--accent-arr); animation: pulse 3s infinite; }
         .custom-dot.conflict { background-color: var(--alert-color); box-shadow: 0 0 15px var(--alert-color); animation: flash 1s infinite; }
         .custom-dot.is-selected { transform: scale(1.5) !important; border-color: #fff !important; background-color: #fff !important; box-shadow: 0 0 20px #fff !important; z-index: 999 !important; }
         
-        .leaflet-tooltip-flight { 
-            background: rgba(0, 0, 0, 0.85); border: 1px solid #666; color: #fff; 
-            font-family: 'JetBrains Mono'; font-weight: bold; 
-            border-radius: 4px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.8);
-            transition: font-size 0.2s, padding 0.2s; text-align: center;
-        }
+        .leaflet-tooltip-flight { background: rgba(0, 0, 0, 0.85); border: 1px solid #666; color: #fff; font-family: 'JetBrains Mono'; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.8); transition: font-size 0.2s, padding 0.2s; text-align: center; }
         .zoom-low .leaflet-tooltip-flight { font-size: 8px; padding: 0px 2px; line-height: 1.1; }
         .zoom-mid .leaflet-tooltip-flight { font-size: 10px; padding: 2px 4px; line-height: 1.2; }
         .zoom-high .leaflet-tooltip-flight { font-size: 13px; padding: 4px 8px; line-height: 1.3; border: 2px solid #fff; }
@@ -95,6 +102,8 @@
         @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.3); } 100% { opacity: 1; transform: scale(1); } }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         @keyframes flash-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes flash-bg { 0% { background-color: rgba(255, 0, 60, 0.1); } 50% { background-color: rgba(255, 0, 60, 0.4); } 100% { background-color: rgba(255, 0, 60, 0.1); } }
+        .row-delayed-flash { animation: flash-bg 1.5s infinite; border-left: 3px solid var(--alert-color) !important; }
 
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
         thead { position: sticky; top: 0; background-color: #151515; z-index: 10; border-bottom: 1px solid #333; }
@@ -102,13 +111,11 @@
         td { padding: 6px 10px; vertical-align: middle; border-bottom: 1px solid #222; white-space: nowrap; color: #eee; }
         tbody tr { transition: background 0.1s; cursor: pointer; }
         tbody tr:hover { background-color: #222 !important; }
-        
         .row-selected { background-color: rgba(255, 215, 0, 0.15) !important; border-left: 3px solid var(--highlight-border) !important; }
         .row-selected td { color: #fff !important; font-weight: bold; }
         .row-selected-alert { background-color: rgba(255, 0, 60, 0.25) !important; border-left: 3px solid var(--alert-color) !important; }
         .row-auto-violet { background-color: var(--auto-rule-violet-bg); border-left: 3px solid var(--auto-rule-violet-border); }
         .row-auto-red { background-color: var(--auto-rule-red-bg); border-left: 3px solid var(--auto-rule-red-border); }
-        
         .mono { font-family: 'JetBrains Mono', monospace; }
         .bold { font-weight: 700; }
         .tail-number { color: #aaa; font-size: 11px; border: 1px solid #444; padding: 1px 4px; border-radius: 2px; }
@@ -122,6 +129,7 @@
         .st-ok { color: #00ff88; }
         .st-pre { color: #ccff00; background: rgba(204, 255, 0, 0.15); border: 1px solid #ccff00; animation: flash-text 0.6s infinite; text-shadow: 0 0 8px #ccff00; }
         .st-alert-flash { color: #ff003c; background: rgba(255, 0, 60, 0.15); border: 1px solid #ff003c; animation: flash-text 0.6s infinite; text-shadow: 0 0 8px #ff003c; }
+        .st-consult-flash { color: var(--consult-color); background: rgba(255, 179, 0, 0.15); border: 1px solid var(--consult-color); animation: flash-text 0.8s infinite; text-shadow: 0 0 8px var(--consult-color); }
 
         .btn-table-unpin { border: 1px solid var(--alert-color); background: rgba(255, 0, 0, 0.1); color: var(--alert-color); border-radius: 3px; cursor: pointer; padding: 0 4px; font-weight: bold; font-size: 10px; }
         .btn-table-unpin:hover { background: var(--alert-color); color: #fff; }
@@ -134,6 +142,7 @@
     </style>
 </head>
 <body>
+    <div id="error-box"></div>
 
     <header>
         <div class="brand"><span>⚡</span> AEP OPS</div>
@@ -175,6 +184,7 @@
         <div id="map-container">
             <div class="map-btn-group">
                 <button class="map-btn" onclick="window.appController.resetMap()">🔍 AEP</button>
+                <button class="map-btn" onclick="window.appController.toggleFullscreen()">⛶ PANTALLA COMPLETA</button>
                 <button class="map-btn" id="btn-toggle-view" onclick="window.appController.toggleMapView()">🗺️ VER PLATAFORMA</button>
             </div>
             
@@ -196,10 +206,20 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script>
+        // ERROR HANDLER
+        window.onerror = function(msg, url, line) {
+            const el = document.getElementById('error-box');
+            if (el) {
+                el.style.display = 'block';
+                el.innerHTML = `ERROR CRITICO: ${msg} (Linea ${line})`;
+            }
+            return false;
+        };
+
         const CONFIG = {
             API_URL: '/datos-limpios',
             UPDATE_INTERVAL: 10000,
-            CAROUSEL_INTERVAL: 2000, 
+            CAROUSEL_INTERVAL: 4000, 
             PREBOARD_MIN: 30,
             PREBOARD_MAX: 90,
             AEROPUERTOS_INT: ["GRU", "GIG", "MVD", "SCL", "LIM", "ASU", "BOG", "FLN", "PDP", "VVI", "CWB", "POA", "MIA", "MAD"],
@@ -225,20 +245,46 @@
             isInternational(lugar) { return CONFIG.AEROPUERTOS_INT.includes((lugar || "").toUpperCase()); },
             hasDelayStatus(estado) { return /DEM|CAN|DLY/.test((estado || "").toUpperCase()); },
             isPreBoardingStatus(estado) { return (estado || "").toUpperCase().includes("PRE"); },
+            
             checkPreBoarding(flight) {
                 if (this.hasDelayStatus(flight.estado)) return false;
                 if (this.isPreBoardingStatus(flight.estado)) return true;
                 const timeStr = flight.hora_est || flight.hora_prog;
                 if (!timeStr || !timeStr.includes(':')) return false;
-                const now = new Date(); const [h, m] = timeStr.split(':').map(Number);
+                const now = new Date(); 
+                const parts = timeStr.split(':');
+                if(parts.length < 2) return false;
+                const h = parseInt(parts[0]);
+                const m = parseInt(parts[1]);
                 const flightTime = new Date(); flightTime.setHours(h, m, 0);
                 let diff = (flightTime - now) / 60000;
                 if (diff < -720) diff += 1440; if (diff > 720) diff -= 1440;
                 return diff > CONFIG.PREBOARD_MIN && diff <= CONFIG.PREBOARD_MAX;
             },
-            updateClock() { document.getElementById('reloj').innerText = new Date().toLocaleTimeString('es-AR', { hour12: false }); },
+            
+            checkAutoDelay(flight) {
+                const status = (flight.estado || "").toUpperCase();
+                if (status.includes("PAR") || status.includes("ATE") || status.includes("CAN")) return false;
+                if (this.hasDelayStatus(status)) return true;
+                const timeStr = flight.hora_est || flight.hora_prog;
+                if (!timeStr || !timeStr.includes(':')) return false;
+                const now = new Date();
+                const [h, m] = timeStr.split(':').map(Number);
+                const flightTime = new Date();
+                flightTime.setHours(h, m, 0);
+                let diff = (flightTime - now) / 60000;
+                if (diff < -5 && diff > -300) return true; 
+                return false;
+            },
+
+            updateClock() { 
+                const el = document.getElementById('reloj');
+                if(el) el.innerText = new Date().toLocaleTimeString('es-AR', { hour12: false }); 
+            },
             getTodayDate() { return new Date().toISOString().split('T')[0]; }
         };
+
+        // --- CLASSES DEFINITIONS START HERE ---
 
         class DataManager {
             constructor() {
@@ -281,16 +327,33 @@
                         };
                     };
 
+                    const filterDone = (f) => {
+                        const s = (f.Remark || f.estado || "").toUpperCase();
+                        return !s.includes("PAR") && !s.includes("ATE");
+                    };
+
+                    let partidasLimpias, arribosLimpios;
                     if (rawData.partidas && rawData.partidas.length > 0 && rawData.partidas[0].vuelo) {
-                         this.data = { partidas: rawData.partidas, arribos: rawData.arribos };
+                         partidasLimpias = rawData.partidas.filter(filterDone);
+                         arribosLimpios = rawData.arribos.filter(filterDone);
                     } else {
-                         this.data = { 
-                            partidas: (rawData.partidas || []).map(f => normalize(f, 'dep')), 
-                            arribos: (rawData.arribos || []).map(f => normalize(f, 'arr')) 
-                        };
+                         partidasLimpias = (rawData.partidas || []).filter(filterDone).map(f => normalize(f, 'dep'));
+                         arribosLimpios = (rawData.arribos || []).filter(filterDone).map(f => normalize(f, 'arr'));
                     }
 
-                    document.getElementById('data-ts').innerText = new Date().toLocaleTimeString('es-AR');
+                    this.data = { 
+                        partidas: partidasLimpias.map(f => {
+                            if(Utils.checkAutoDelay(f)) { f.estado = "DEM"; f.isAutoDelayed = true; }
+                            return f;
+                        }), 
+                        arribos: arribosLimpios.map(f => {
+                            if(Utils.checkAutoDelay(f)) { f.estado = "DEM"; f.isAutoDelayed = true; }
+                            return f;
+                        })
+                    };
+
+                    const tsEl = document.getElementById('data-ts');
+                    if(tsEl) tsEl.innerText = new Date().toLocaleTimeString('es-AR');
                     return true;
                 } catch (e) { 
                     console.error('Error fetching data:', e); 
@@ -310,7 +373,7 @@
                 this.simMode = true;
                 this.data = {
                     partidas: [{ vuelo: "FO 5091", lugar: "MIA", hora_prog: "10:00", matricula: "LV-SIM", posicion: "01", estado: "PRE", dato_extra: "12" }, { vuelo: "SIM-32A", lugar: "COR", hora_prog: "10:30", matricula: "LV-TEST", posicion: "32A", estado: "HOR", dato_extra: "14" }],
-                    arribos: [{ vuelo: "SIM-ARR", lugar: "MDQ", hora_prog: "11:00", matricula: "LV-ARR", posicion: "15", estado: "ATE", dato_extra: "1" }]
+                    arribos: [{ vuelo: "SIM-ARR", lugar: "MDQ", hora_prog: "11:00", matricula: "LV-ARR", posicion: "15", estado: "CON", dato_extra: "1" }]
                 };
             }
             disableSimMode() { this.simMode = false; }
@@ -320,8 +383,8 @@
             constructor(dataManager) { this.dataManager = dataManager; }
             updateHeaderStats() {
                 const data = this.dataManager.data;
-                const countDep = data.partidas.filter(v => Utils.hasDelayStatus(v.estado)).length;
-                const countArr = data.arribos.filter(v => Utils.hasDelayStatus(v.estado)).length;
+                const countDep = data.partidas.filter(v => Utils.hasDelayStatus(v.estado) || v.isAutoDelayed).length;
+                const countArr = data.arribos.filter(v => Utils.hasDelayStatus(v.estado) || v.isAutoDelayed).length;
                 this.updateStatElement('count-dep', countDep, false);
                 this.updateStatElement('count-arr', countArr, false);
                 let preCab = 0, preInt = 0;
@@ -355,13 +418,25 @@
                 tbody.innerHTML = '';
                 if (!lista || lista.length === 0) return;
                 const sortedList = [...lista].map(v => ({ ...v, id: `${v.vuelo}_${type === 'dep' ? 'D' : 'A'}` }));
+                
+                // --- ORDENAMIENTO POR TIEMPO REAL ---
+                const getSortTime = (f) => {
+                    let t = f.hora_real || f.hora_est || f.hora_prog;
+                    if(!t || t.length < 4) return 9999; 
+                    return parseInt(t.replace(":", ""));
+                };
+
                 sortedList.sort((a, b) => {
+                    // 1. Pinned
                     const aPin = this.dataManager.isPinned(a.id);
                     const bPin = this.dataManager.isPinned(b.id);
                     if (aPin && !bPin) return -1;
                     if (!aPin && bPin) return 1;
-                    return 0;
+
+                    // 2. Cronológico
+                    return getSortTime(a) - getSortTime(b);
                 });
+
                 sortedList.forEach(v => {
                     const tr = this.createTableRow(v, type);
                     tbody.appendChild(tr);
@@ -377,8 +452,11 @@
             }
             getRowClass(v, isSelected) {
                 if (isSelected) {
-                    return Utils.hasDelayStatus(v.estado) ? 'row-selected-alert' : 'row-selected';
+                    return (Utils.hasDelayStatus(v.estado) || v.isAutoDelayed) ? 'row-selected-alert' : 'row-selected';
                 }
+                
+                if (v.isAutoDelayed || Utils.hasDelayStatus(v.estado)) return 'row-delayed-flash';
+
                 const lugar = (v.lugar || "").toUpperCase();
                 const vuelo = (v.vuelo || "").toUpperCase();
                 const isHotZone = Utils.isHotZone(v.posicion);
@@ -412,10 +490,22 @@
             }
             getEstadoBadge(v, type) {
                 let stText = v.estado || "";
+                let statusUpper = stText.toUpperCase();
                 let stClass = "st-ok";
-                if (Utils.hasDelayStatus(v.estado)) { stClass = "st-alert-flash"; } 
-                else if (type === 'dep' && Utils.checkPreBoarding(v)) { stClass = "st-pre"; stText = "PRE"; } 
-                else if (Utils.isPreBoardingStatus(v.estado)) { stClass = "st-pre"; }
+                
+                if (Utils.hasDelayStatus(v.estado) || v.isAutoDelayed) { 
+                    stClass = "st-alert-flash"; 
+                } 
+                else if (statusUpper.includes("CON")) { 
+                    stClass = "st-consult-flash"; 
+                }
+                else if (type === 'dep' && Utils.checkPreBoarding(v)) { 
+                    stClass = "st-pre"; stText = "PRE"; 
+                } 
+                else if (Utils.isPreBoardingStatus(v.estado)) { 
+                    stClass = "st-pre"; 
+                }
+                
                 return `<span class="st-pill ${stClass}">${stText}</span>`;
             }
             getExtraBadge(v, type) {
@@ -483,7 +573,7 @@
                 }
                 return div;
             }
-        }
+        } // --- UIManager END ---
 
         class MapController {
             constructor(dataManager) {
@@ -583,9 +673,30 @@
                 if (this.currentView !== 'radar') return;
                 const flight = this.dataManager.getFlightById(flightId);
                 if (!flight || !flight.matricula || flight.matricula === "---") return;
-                document.getElementById('radar-frame').src = `https://globe.adsbexchange.com/?reg=${flight.matricula}&zoom=14&hideSidebar&hideButtons&enableLabels`;
+                // ZOOM LEVEL 9 HERE
+                document.getElementById('radar-frame').src = `https://globe.adsbexchange.com/?reg=${flight.matricula}&zoom=9&hideSidebar&hideButtons&enableLabels`;
             }
-        }
+            toggleFullscreen() {
+                const mapContainer = document.getElementById('map-container');
+                if (!document.fullscreenElement) {
+                    if(mapContainer.requestFullscreen) {
+                        mapContainer.requestFullscreen().catch(err => alert(`Error: ${err.message}`));
+                    } else if (mapContainer.webkitRequestFullscreen) { /* Safari */
+                        mapContainer.webkitRequestFullscreen();
+                    } else if (mapContainer.msRequestFullscreen) { /* IE11 */
+                        mapContainer.msRequestFullscreen();
+                    }
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                }
+            }
+        } // --- MapController END ---
 
         class AppController {
             constructor() {
@@ -624,6 +735,7 @@
                 this.refreshUI();
             }
             toggleHighlight(flightId) { this.selectFlight(flightId); }
+            toggleFullscreen() { this.mapController.toggleFullscreen(); }
             toggleSim() {
                 const btn = document.getElementById('sim-btn');
                 if (!this.dataManager.simMode) {
@@ -658,8 +770,9 @@
                     this.refreshUI(); // Re-render to show next flight in stack
                 }, CONFIG.CAROUSEL_INTERVAL);
             }
-        }
+        } // --- AppController END ---
 
+        // START APP
         window.appController = new AppController();
         window.addEventListener('DOMContentLoaded', () => { window.appController.init(); });
     </script>
