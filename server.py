@@ -5,7 +5,7 @@ import os
 app = Flask(__name__)
 
 # TU API REAL EN RAILWAY
-URL_RAILWAY = "https://vuelos-flask-production.up.railway.app/"
+URL_RAILWAY = "https://vuelos-flask-production.up.railway.app/datos-limpios"
 
 def limpiar_dato(diccionario, claves_posibles):
     """ Busca un dato probando varias claves mal codificadas """
@@ -99,3 +99,4 @@ if __name__ == '__main__':
     print(f"--- INICIANDO SERVIDOR EN PUERTO {port} ---")
     # host='0.0.0.0' es OBLIGATORIO para que sea visible en internet
     app.run(host='0.0.0.0', port=port)
+
