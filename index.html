@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AEP OPS CONTROL | v71 COLLAPSIBLE</title>
+    <title>AEP OPS CONTROL | v73 SORT FIX</title>
     <link rel="icon" type="image/png" href="https://i.ibb.co/jvvJCPKY/favicon-32x32.png">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -750,6 +750,7 @@
                             <tr>
                                 <th>Vuelo</th>
                                 <th>Dest</th>
+                                <th>Fch</th>
                                 <th>Prog</th>
                                 <th>Est/Real</th>
                                 <th>Mat</th>
@@ -775,6 +776,7 @@
                             <tr>
                                 <th>Vuelo</th>
                                 <th>Orig</th>
+                                <th>Fch</th>
                                 <th>Prog</th>
                                 <th>Est/Real</th>
                                 <th>Mat</th>
@@ -829,7 +831,7 @@
             <div>DATA: <span id="data-ts">...</span></div>
         </div>
         <div class="footer-section">
-            <div>v71 COLLAPSIBLE | Historial: <span id="history-count">0</span> cambios</div>
+            <div>v73 SORT FIX | Historial: <span id="history-count">0</span> cambios</div>
         </div>
     </footer>
 
@@ -891,9 +893,24 @@
                 return new Date().toISOString().split('T')[0]; 
             },
 
-            getSortTime(flight) {
-                let t = flight.hora_real || flight.hora_est || flight.hora_prog;
-                return t && t.length >= 4 ? parseInt(t.replace(":", "")) : 9999;
+            // --- FUNCIÓN DE ORDENAMIENTO MEJORADA ---
+            // Crea un número MMDDHHMM para ordenar correctamente fechas y horas
+            getSortTimestamp(flight) {
+                // Obtener fecha (DD/MM)
+                // Si viene vacía, asumimos "00/00" para que vaya al fondo, o "99/99"
+                let f = flight.fecha || "99/99"; 
+                let [dia, mes] = f.split('/').map(n => (n || "00").padStart(2, '0'));
+
+                // Obtener hora (prioridad: Real > Est > Prog)
+                // Como pediste, si no hay Real, usa Prog. (Aquí usamos la cascada completa por seguridad)
+                let t = flight.hora_real || flight.hora_est || flight.hora_prog || "23:59";
+                let tClean = t.replace(":", "").padStart(4, '0');
+
+                // Formato comparativo: MMDDHHMM (Mes + Dia + Hora + Minuto)
+                // Ejemplo: 08/12 20:30 -> 12082030
+                // Ejemplo: 09/12 00:10 -> 12090010
+                // Al comparar estos números, 1208... siempre es menor que 1209...
+                return parseInt(`${mes}${dia}${tClean}`);
             }
         };
 
@@ -1118,14 +1135,18 @@
                     
                     let fullFlight = f.vuelo || "";
                     if (!fullFlight && (f["Cia."] || f.Cia) && f.Vuelo) {
-                         fullFlight = ((f["Cia."] || f.Cia) + " " + f.Vuelo).trim();
+                          fullFlight = ((f["Cia."] || f.Cia) + " " + f.Vuelo).trim();
                     }
                     
                     let pos = f.Posicion || f.posicion || "---";
 
+                    // === PROCESAMIENTO DE FECHA ===
+                    let fecha = f.fecha || f.Fecha || "";
+
                     return {
                         vuelo: fullFlight,
                         lugar: type === 'dep' ? (f.Destino || f.lugar || "---") : (f.Origen || f.lugar || "---"),
+                        fecha: fecha,
                         hora_prog: hProg,
                         hora_est: hEst,
                         hora_real: hReal,
@@ -1145,11 +1166,11 @@
                 let partidasLimpias, arribosLimpios;
                 
                 if (rawData.partidas && rawData.partidas.length > 0 && rawData.partidas[0].vuelo) {
-                     partidasLimpias = rawData.partidas.filter(filterDone);
-                     arribosLimpios = rawData.arribos.filter(filterDone);
+                      partidasLimpias = rawData.partidas.filter(filterDone);
+                      arribosLimpios = rawData.arribos.filter(filterDone);
                 } else {
-                     partidasLimpias = (rawData.partidas || []).filter(filterDone).map(f => normalize(f, 'dep'));
-                     arribosLimpios = (rawData.arribos || []).filter(filterDone).map(f => normalize(f, 'arr'));
+                      partidasLimpias = (rawData.partidas || []).filter(filterDone).map(f => normalize(f, 'dep'));
+                      arribosLimpios = (rawData.arribos || []).filter(filterDone).map(f => normalize(f, 'arr'));
                 }
 
                 return { 
@@ -1244,7 +1265,7 @@
                 const fragment = document.createDocumentFragment();
                 
                 if (!lista || lista.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;">Sin datos disponibles</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#666;">Sin datos disponibles</td></tr>';
                     return;
                 }
 
@@ -1254,11 +1275,16 @@
                     _state: this.dataManager.getFlightState(v)
                 }));
                 
+                // === LÓGICA DE ORDENAMIENTO ACTUALIZADA ===
                 sortedList.sort((a, b) => {
                     const aPin = this.pinManager.isPinned(a.id);
                     const bPin = this.pinManager.isPinned(b.id);
+                    // 1. Pines primero
                     if (aPin !== bPin) return aPin ? -1 : 1;
-                    return Utils.getSortTime(a) - Utils.getSortTime(b);
+                    
+                    // 2. Ordenar por Timestamp (MesDiaHoraMinuto)
+                    // Esto asegura que 08/12 23:00 sea MENOR que 09/12 00:00
+                    return Utils.getSortTimestamp(a) - Utils.getSortTimestamp(b);
                 });
 
                 sortedList.forEach(v => {
@@ -1324,6 +1350,7 @@
 
                 return `<td class="mono bold">${flightCell}</td>
                         <td class="font-bold">${flight.lugar}</td>
+                        <td class="mono" style="color:#888; font-size:11px;">${flight.fecha || '--/--'}</td>
                         <td class="mono">${flight.hora_prog || '--:--'}</td>
                         <td>${displayTime}</td>
                         <td>${mat}</td>
@@ -1719,7 +1746,7 @@
             }
 
             async init() {
-                console.log('🚀 Iniciando AEP OPS CONTROL v71 COLLAPSIBLE...');
+                console.log('🚀 Iniciando AEP OPS CONTROL v73...');
                 
                 this.mapManager = new MapManager(this.config, this.dataManager, this.pinManager);
                 this.mapManager.init();
@@ -1846,13 +1873,13 @@
                     
                     this.dataManager.data = {
                         partidas: [
-                            { vuelo: "FO 5000", lugar: "MIA", hora_prog: "10:00", matricula: "LV-SIM", posicion: "01", estado: "PRE", dato_extra: "12", _tipo: 'dep' },
-                            { vuelo: "AR 1234", lugar: "COR", hora_prog: "11:30", hora_est: "12:15", matricula: "LV-TST", posicion: "15", estado: "DEM", dato_extra: "8", _tipo: 'dep' },
-                            { vuelo: "WJ 321", lugar: "BRC", hora_prog: "09:00", matricula: "LV-XYZ", posicion: "20", estado: "OK", dato_extra: "5", _tipo: 'dep' }
+                            { vuelo: "FO 5000", lugar: "MIA", fecha:"08/12", hora_prog: "10:00", matricula: "LV-SIM", posicion: "01", estado: "PRE", dato_extra: "12", _tipo: 'dep' },
+                            { vuelo: "AR 1234", lugar: "COR", fecha:"08/12", hora_prog: "11:30", hora_est: "12:15", matricula: "LV-TST", posicion: "15", estado: "DEM", dato_extra: "8", _tipo: 'dep' },
+                            { vuelo: "WJ 321", lugar: "BRC", fecha:"09/12", hora_prog: "09:00", matricula: "LV-XYZ", posicion: "20", estado: "OK", dato_extra: "5", _tipo: 'dep' }
                         ],
                         arribos: [
-                            { vuelo: "AR 5678", lugar: "MDZ", hora_prog: "13:00", hora_real: "13:05", matricula: "LV-ABC", posicion: "18", estado: "OK", dato_extra: "2", _tipo: 'arr' },
-                            { vuelo: "FO 5100", lugar: "IGR", hora_prog: "14:00", hora_est: "14:45", matricula: "LV-DEF", posicion: "3", estado: "DEM", dato_extra: "4", _tipo: 'arr' }
+                            { vuelo: "AR 5678", lugar: "MDZ", fecha:"08/12", hora_prog: "13:00", hora_real: "13:05", matricula: "LV-ABC", posicion: "18", estado: "OK", dato_extra: "2", _tipo: 'arr' },
+                            { vuelo: "FO 5100", lugar: "IGR", fecha:"08/12", hora_prog: "14:00", hora_est: "14:45", matricula: "LV-DEF", posicion: "3", estado: "DEM", dato_extra: "4", _tipo: 'arr' }
                         ]
                     };
                     
@@ -2025,4 +2052,3 @@
     </script>
 </body>
 </html>
-
