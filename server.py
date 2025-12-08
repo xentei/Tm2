@@ -7,96 +7,57 @@ app = Flask(__name__)
 # TU API REAL EN RAILWAY
 URL_RAILWAY = "https://vuelos-flask-production.up.railway.app/datos-limpios"
 
-def limpiar_dato(diccionario, claves_posibles):
-    """ Busca un dato probando varias claves mal codificadas """
-    for clave in claves_posibles:
-        if clave in diccionario and diccionario[clave]:
-            return diccionario[clave]
-    return "---"
-
-def limpiar_hora(raw):
-    """ Deja solo la hora HH:MM si viene con fecha """
-    if not raw: return ""
-    return raw.split(" ")[1] if " " in raw else raw
-
-def procesar_vuelo(v, tipo):
-    # 1. Armar número de vuelo
-    cia = limpiar_dato(v, ["Cia.", "CÃ­a.", "C\u00eda.", "CÃ\xada."])
-    num = v.get("Vuelo", "")
-    vuelo_full = f"{cia} {num}"
-
-    # 2. Matricula y Posición
-    matricula = limpiar_dato(v, ["Matricula", "MatrÃ­cula", "Matr\u00c3\u00adcula", "Matrícula"])
-    posicion = limpiar_dato(v, ["Posicion", "PosiciÃ³n", "Posici\u00c3\u00b3n", "Posición"])
-
-    # 3. HORARIOS Y LUGARES
-    if tipo == "partida":
-        lugar = limpiar_dato(v, ["Destino", "Dest"])
-        dato_extra = v.get("Puerta", "---")
-        
-        # Horarios Partida
-        prog = limpiar_hora(v.get("STD", ""))
-        est  = limpiar_hora(v.get("ETD", ""))
-        real = limpiar_hora(v.get("ATD", ""))
-        
-    else:
-        lugar = v.get("Origen", "---")
-        dato_extra = v.get("Cinta", "---")
-        
-        # Horarios Arribo
-        prog = limpiar_hora(v.get("STA", ""))
-        est  = limpiar_hora(v.get("ETA", ""))
-        real = limpiar_hora(v.get("ATA", ""))
-
-    estado = v.get("Remark", "")
-
-    return {
-        "vuelo": vuelo_full,
-        "lugar": lugar,
-        "hora_prog": prog,  # Programada
-        "hora_est": est,    # Estimada
-        "hora_real": real,  # Real (Aterrizaje/Despegue)
-        "matricula": matricula,
-        "posicion": posicion,
-        "dato_extra": dato_extra,
-        "estado": estado
-    }
-
 @app.route('/')
 def home():
     try:
         return send_file('index.html')
     except Exception as e:
-        return f"ERROR: No encuentro el archivo index.html. {e}"
+        return f"ERROR: No encuentro index.html. {e}"
 
+# Servir imagen del plano
+@app.route('/plano.jpg')
+def servir_imagen():
+    try:
+        return send_file('plano.jpg')
+    except Exception as e:
+        return f"ERROR: No encuentro la imagen plano.jpg. {e}"
+
+# PROXY SIMPLE - Solo pasa los datos tal cual
 @app.route('/datos-limpios')
 def proxy_datos():
     try:
-        r = requests.get(URL_RAILWAY, timeout=10)
-        if r.status_code != 200: return jsonify({"error": "Error Railway"}), 500
-
-        datos_crudos = r.json()
-        datos_limpios = {"partidas": [], "arribos": []}
-
-        if "partidas" in datos_crudos:
-            for p in datos_crudos["partidas"]:
-                datos_limpios["partidas"].append(procesar_vuelo(p, "partida"))
-
-        if "arribos" in datos_crudos:
-            for a in datos_crudos["arribos"]:
-                datos_limpios["arribos"].append(procesar_vuelo(a, "arribo"))
-
-        return jsonify(datos_limpios)
-
+        print(f"→ Requesting data from Railway...")
+        r = requests.get(URL_RAILWAY, timeout=15)
+        
+        if r.status_code != 200:
+            print(f"✗ Railway error: {r.status_code}")
+            return jsonify({"error": f"Railway HTTP {r.status_code}"}), 500
+        
+        datos = r.json()
+        
+        # Verificar que tenga datos
+        if 'partidas' in datos and 'arribos' in datos:
+            total = len(datos.get('partidas', [])) + len(datos.get('arribos', []))
+            print(f"✓ Datos recibidos: {total} vuelos")
+            
+            # Pasar los datos tal cual (ya están en el formato correcto)
+            return jsonify(datos), 200
+        else:
+            print(f"✗ Formato inesperado: {list(datos.keys())}")
+            return jsonify({"error": "Formato de datos incorrecto"}), 500
+            
+    except requests.Timeout:
+        print("✗ Timeout conectando a Railway")
+        return jsonify({"error": "Timeout - Railway no responde"}), 504
+    except requests.RequestException as e:
+        print(f"✗ Error de conexión: {e}")
+        return jsonify({"error": f"Error conectando a Railway: {str(e)}"}), 500
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"✗ Error inesperado: {e}")
         return jsonify({"error": str(e)}), 500
 
-# --- ESTA ES LA PARTE IMPORTANTE PARA RENDER ---
 if __name__ == '__main__':
-    # Obtiene el puerto del entorno de la nube, si no existe usa el 5000
     port = int(os.environ.get("PORT", 5000))
-    print(f"--- INICIANDO SERVIDOR EN PUERTO {port} ---")
-    # host='0.0.0.0' es OBLIGATORIO para que sea visible en internet
-    app.run(host='0.0.0.0', port=port)
-
+    print(f"🚀 SERVIDOR INICIADO EN PUERTO {port}")
+    print(f"📡 Conectando a: {URL_RAILWAY}")
+    app.run(host='0.0.0.0', port=port, debug=False)
