@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AEP OPS CONTROL | v73 SORT FIX</title>
+    <title>AEP OPS CONTROL | v76 FINAL FIX</title>
     <link rel="icon" type="image/png" href="https://i.ibb.co/jvvJCPKY/favicon-32x32.png">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -294,12 +294,19 @@
             border-radius: 3px;
             font-size: 11px;
             transition: all 0.2s;
+            cursor: pointer;
         }
         
         .history-item:hover {
             background: #252525;
             border-left-color: #fff;
             transform: translateX(2px);
+        }
+
+        .history-item.is-pinned-history {
+            border: 1px solid var(--highlight-border);
+            background: rgba(255, 215, 0, 0.1);
+            border-left: 3px solid var(--highlight-border);
         }
         
         .history-time {
@@ -831,7 +838,7 @@
             <div>DATA: <span id="data-ts">...</span></div>
         </div>
         <div class="footer-section">
-            <div>v73 SORT FIX | Historial: <span id="history-count">0</span> cambios</div>
+            <div>v76 FINAL FIX | Historial: <span id="history-count">0</span> cambios</div>
         </div>
     </footer>
 
@@ -893,23 +900,11 @@
                 return new Date().toISOString().split('T')[0]; 
             },
 
-            // --- FUNCIÓN DE ORDENAMIENTO MEJORADA ---
-            // Crea un número MMDDHHMM para ordenar correctamente fechas y horas
             getSortTimestamp(flight) {
-                // Obtener fecha (DD/MM)
-                // Si viene vacía, asumimos "00/00" para que vaya al fondo, o "99/99"
                 let f = flight.fecha || "99/99"; 
                 let [dia, mes] = f.split('/').map(n => (n || "00").padStart(2, '0'));
-
-                // Obtener hora (prioridad: Real > Est > Prog)
-                // Como pediste, si no hay Real, usa Prog. (Aquí usamos la cascada completa por seguridad)
                 let t = flight.hora_real || flight.hora_est || flight.hora_prog || "23:59";
                 let tClean = t.replace(":", "").padStart(4, '0');
-
-                // Formato comparativo: MMDDHHMM (Mes + Dia + Hora + Minuto)
-                // Ejemplo: 08/12 20:30 -> 12082030
-                // Ejemplo: 09/12 00:10 -> 12090010
-                // Al comparar estos números, 1208... siempre es menor que 1209...
                 return parseInt(`${mes}${dia}${tClean}`);
             }
         };
@@ -1139,8 +1134,6 @@
                     }
                     
                     let pos = f.Posicion || f.posicion || "---";
-
-                    // === PROCESAMIENTO DE FECHA ===
                     let fecha = f.fecha || f.Fecha || "";
 
                     return {
@@ -1165,9 +1158,11 @@
 
                 let partidasLimpias, arribosLimpios;
                 
+                // === CORRECCION CRITICA AQUI ===
+                // Forzamos la asignacion de _tipo incluso si los datos ya vienen limpios
                 if (rawData.partidas && rawData.partidas.length > 0 && rawData.partidas[0].vuelo) {
-                      partidasLimpias = rawData.partidas.filter(filterDone);
-                      arribosLimpios = rawData.arribos.filter(filterDone);
+                      partidasLimpias = rawData.partidas.filter(filterDone).map(f => ({...f, _tipo: 'dep'}));
+                      arribosLimpios = rawData.arribos.filter(filterDone).map(f => ({...f, _tipo: 'arr'}));
                 } else {
                       partidasLimpias = (rawData.partidas || []).filter(filterDone).map(f => normalize(f, 'dep'));
                       arribosLimpios = (rawData.arribos || []).filter(filterDone).map(f => normalize(f, 'arr'));
@@ -1275,15 +1270,10 @@
                     _state: this.dataManager.getFlightState(v)
                 }));
                 
-                // === LÓGICA DE ORDENAMIENTO ACTUALIZADA ===
                 sortedList.sort((a, b) => {
                     const aPin = this.pinManager.isPinned(a.id);
                     const bPin = this.pinManager.isPinned(b.id);
-                    // 1. Pines primero
                     if (aPin !== bPin) return aPin ? -1 : 1;
-                    
-                    // 2. Ordenar por Timestamp (MesDiaHoraMinuto)
-                    // Esto asegura que 08/12 23:00 sea MENOR que 09/12 00:00
                     return Utils.getSortTimestamp(a) - Utils.getSortTimestamp(b);
                 });
 
@@ -1477,8 +1467,14 @@
                     const icon = h.tipo === 'dep' ? '🛫' : '🛬';
                     const stateClass = this.getHistoryStateClass(h.to);
                     
+                    const suffix = h.tipo === 'dep' ? 'D' : 'A';
+                    const flightId = `${h.flight}_${suffix}`;
+                    
+                    const isPinned = this.pinManager.isPinned(flightId);
+                    const activeClass = isPinned ? 'is-pinned-history' : '';
+                    
                     return `
-                        <div class="history-item">
+                        <div class="history-item ${activeClass}" onclick="APP.pinManager.togglePin('${flightId}')">
                             <div class="history-time">${this.formatTime(h.timestamp)}</div>
                             <div class="history-flight">${icon} ${h.flight}</div>
                             <div class="history-details">${h.lugar} | POS ${h.posicion}</div>
@@ -1746,7 +1742,7 @@
             }
 
             async init() {
-                console.log('🚀 Iniciando AEP OPS CONTROL v73...');
+                console.log('🚀 Iniciando AEP OPS CONTROL v76...');
                 
                 this.mapManager = new MapManager(this.config, this.dataManager, this.pinManager);
                 this.mapManager.init();
@@ -1793,7 +1789,8 @@
                 const allFlights = [...this.dataManager.data.partidas, ...this.dataManager.data.arribos];
                 
                 allFlights.forEach(flight => {
-                    const flightId = flight.vuelo;
+                    // ID único para diferenciar Ida/Vuelta
+                    const flightId = `${flight.vuelo}_${flight._tipo}`;
                     const currentState = flight.estado;
                     
                     if (this.previousStates.has(flightId)) {
